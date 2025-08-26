@@ -1,76 +1,24 @@
-import { TokenPayload } from "@/types/TokenPayload";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { jwtDecode } from "jwt-decode";
 import Toast from "react-native-toast-message";
-import { api } from "./api";
-import { getUser } from "./usuarioService";
+import { api, apiPublic } from "./api";
+import { saveTokens, clearTokens, checkAndClearOldCache } from "./util";
+import { jwtDecode } from 'jwt-decode';
 
-let isUpdatingToken = false;
-
-/**
- * Define o estado de atualização do token
- * @param value Valor booleano que indica se o token está em processo de atualização
- */
-const setIsUpdatingToken = (value: boolean) => {
-  isUpdatingToken = value;
-};
+interface TokenPayload {
+  sub: string;
+  email: string;
+  role: string;
+  exp: number;
+}
 
 /**
- * Salva os tokens de autenticação no AsyncStorage
- * @param data Objeto contendo o token de acesso, ID do usuário, tempo de expiração e papel do usuário
+ * Decodifica o payload do JWT
+ * @param token Token JWT para decodificar
+ * @returns Payload decodificado do token
  */
-const saveTokens = async (data: { access_token: string; sub: string, exp: number; role: string }) => {
-  const tokenExpiresIn = data.exp * 1000;
-  await AsyncStorage.multiSet([
-    ["token", data.access_token],
-    ["tokenExpires", tokenExpiresIn.toString()],
-    ["role", data.role],
-    ["userId", data.sub]
-  ]);
-};
-
-/**
- * Atualiza o token de acesso através do endpoint /auth/refresh
- * @throws Redireciona para a tela de login em caso de falha
- */
-const updateToken = async (): Promise<void> => {
-  try {
-    const token = await AsyncStorage.getItem("token");
-    if (!token) {
-      stopTokenUpdateRoutine()
-      router.push("/auth/login");
-      return;
-    }
-    const response = await api.post("/auth/refresh", { access_token: token });
-
-    const { access_token } = response.data;
-    if (access_token) {
-      const payload: TokenPayload = jwtDecode(access_token);
-      await saveTokens({
-        access_token,
-        exp: payload.exp!,
-        role: payload.role!,
-        sub: payload.sub
-      });
-      if (!isUpdatingToken) {
-        tokenUpdateRoutine();
-      }
-    } else {
-      Toast.show({
-        type: "error",
-        text1: "Erro ao atualizar o token",
-        text2: "O token retornado é inválido.",
-      })
-    }
-  } catch (error: any) {
-    Toast.show({
-      type: "error",
-      text1: error instanceof Error ? error.message : "Erro",
-      text2: "Erro ao atualizar o token.",
-    })
-    router.push("/auth/login");
-  }
+const decodeToken = (token: string): TokenPayload => {
+  return jwtDecode<TokenPayload>(token);
 };
 
 /**
@@ -82,101 +30,68 @@ const updateToken = async (): Promise<void> => {
 const doLogin = async (email: string, senha: string): Promise<string> => {
   try {
     const response = await api.post("/auth/login", { email, senha });
-    const { access_token } = response.data;
+    const { access_token, refresh_token } = response.data;
 
-    if (access_token) {
-      const payload: TokenPayload = jwtDecode(access_token);
-      await saveTokens({
-        access_token,
-        exp: payload.exp!,
-        role: payload.role!,
-        sub: payload.sub,
+    if (access_token && refresh_token) {
+      const payload = decodeToken(access_token);
+      
+      await saveTokens(access_token, refresh_token, payload.sub, payload.role);
+      
+      const cacheCleared = await checkAndClearOldCache();
+      if (cacheCleared) {
+        Toast.show({
+          type: "info",
+          text1: "Cache atualizado",
+          text2: "Dados antigos foram limpos para garantir compatibilidade",
+        });
+      }
+      
+      try {
+        const userResponse = await apiPublic.get(`/usuarios/${payload.sub}`, {
+          headers: { Authorization: `Bearer ${access_token}` }
+        });
+        if (userResponse.data?.nome) {
+          await AsyncStorage.setItem("username", userResponse.data.nome);
+        } else {
+          await AsyncStorage.setItem("username", email.split('@')[0]);
+        }
+      } catch (userError) {
+        await AsyncStorage.setItem("username", email.split('@')[0]);
+      }
+      
+      Toast.show({
+        type: "success",
+        text1: "Login realizado com sucesso!",
+        text2: "Bem-vindo ao VocalizeAI",
       });
 
-      try {
-        const userResponse = await api.get(`/usuarios/${payload.sub}`, {
-          headers: { Authorization: `Bearer ${access_token}` },
-        });
-        await AsyncStorage.setItem("username", userResponse.data.nome);
-
-        const userData = await getUser();
-
-        if (userData.participantes && userData.participantes.length > 0) {
-          await AsyncStorage.setItem("hasParticipant", "true");
-
-          router.replace("/(tabs)");
-        } else {
-          await AsyncStorage.setItem("hasParticipant", "false");
-          router.replace("/usuario/dados-participante");
-
-          Toast.show({
-            type: "info",
-            text1: "Atenção",
-            text2: "Por favor, cadastre um participante antes de gravar as vocalizações.",
-          });
-        }
-      } catch (error) {
-        await AsyncStorage.setItem("username", "Usuário");
-        await AsyncStorage.setItem("hasParticipant", "false");
-        router.replace("/usuario/dados-participante");
-      }
-
-      await AsyncStorage.multiSet([
-        ["email", email],
-        ["senha", senha],
-      ]);
-      tokenUpdateRoutine();
       return "success";
     } else {
-      throw new Error("Resposta inválida do servidor.");
+      Toast.show({
+        type: "error",
+        text1: "Erro ao fazer login",
+        text2: "Resposta inválida do servidor.",
+      });
+      return "error";
     }
   } catch (error: any) {
     const errorMessage = error.response?.data?.detail || error.message || "Erro ao fazer login.";
+    
     if (error.response?.status === 403 && error.response?.data?.detail === "Usuário não verificado. Verifique seu e-mail para ativar sua conta.") {
+      Toast.show({
+        type: "error",
+        text1: "Conta não verificada",
+        text2: "Verifique seu e-mail para ativar sua conta.",
+      });
       return "unverified";
     }
+    
     Toast.show({
       type: "error",
       text1: "Erro ao fazer login",
       text2: errorMessage,
-    })
+    });
     return "error";
-  }
-};
-
-/**
- * Obtém o tempo de expiração do token
- * @returns Retorna o tempo de expiração do token em milissegundos
- */
-const getExpirationTime = async (): Promise<number> => {
-  const tempo = await AsyncStorage.getItem("tokenExpires");
-  return Number(tempo);
-};
-
-let tokenUpdateInterval: NodeJS.Timeout | null = null;
-
-/**
- * Inicia a rotina de atualização do token em intervalos definidos
- * Se já houver uma rotina em execução, não inicia uma nova
- */
-const tokenUpdateRoutine = () => {
-  if (tokenUpdateInterval === null) {
-    setIsUpdatingToken(true);
-    const UPDATE_INTERVAL = 9000 * 100
-    tokenUpdateInterval = setInterval(updateToken, UPDATE_INTERVAL);
-  } else {
-    console.log("Uma rotina de atualização de token já está rodando.");
-  }
-};
-
-/**
- * Para a rotina de atualização do token, caso exista
- */
-const stopTokenUpdateRoutine = () => {
-  if (tokenUpdateInterval) {
-    clearInterval(tokenUpdateInterval);
-    tokenUpdateInterval = null;
-    setIsUpdatingToken(false);
   }
 };
 
@@ -203,7 +118,7 @@ const register = async (
       type: "error",
       text1: "Erro ao cadastrar usuário",
       text2: "Todos os campos são obrigatórios.",
-    })
+    });
     return false;
   }
 
@@ -212,7 +127,7 @@ const register = async (
       type: "error",
       text1: "Erro ao cadastrar usuário",
       text2: "É necessário aceitar os termos de uso e política de privacidade.",
-    })
+    });
     return false;
   }
 
@@ -221,7 +136,7 @@ const register = async (
       type: "error",
       text1: "Erro ao cadastrar usuário",
       text2: "Formato do email é inválido.",
-    })
+    });
     return false;
   }
 
@@ -230,7 +145,7 @@ const register = async (
       type: "error",
       text1: "Erro ao cadastrar usuário",
       text2: "As senhas não coincidem.",
-    })
+    });
     return false;
   }
 
@@ -242,10 +157,21 @@ const register = async (
       senha,
       aceite_termos: aceiteTermos
     });
+    
     if (response.status === 201) {
+      Toast.show({
+        type: "success",
+        text1: "Cadastro realizado com sucesso!",
+        text2: "Verifique seu e-mail para confirmar sua conta.",
+      });
       return true;
     } else {
-      throw new Error("Erro ao registrar usuário.");
+      Toast.show({
+        type: "error",
+        text1: "Erro ao cadastrar usuário",
+        text2: "Erro inesperado. Tente novamente.",
+      });
+      return false;
     }
   } catch (error: any) {
     const errorMessage =
@@ -254,7 +180,7 @@ const register = async (
       type: "error",
       text1: "Erro ao cadastrar usuário",
       text2: errorMessage,
-    })
+    });
     return false;
   }
 };
@@ -265,12 +191,22 @@ const register = async (
  */
 const sendConfirmationCode = async (email: string): Promise<void> => {
   try {
-    const response = await api.post('/auth/resend-confirmation-code', { email });
-    return response.data;
-  } catch (error) {
-    throw new Error('Erro ao enviar o código de confirmação.');
+    await api.post('/auth/resend-confirmation-code', { email });
+    Toast.show({
+      type: "success",
+      text1: "Código enviado",
+      text2: "Novo código de confirmação enviado para seu e-mail.",
+    });
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.detail || 'Erro ao enviar o código de confirmação.';
+    Toast.show({
+      type: "error",
+      text1: "Erro",
+      text2: errorMessage,
+    });
+    throw new Error(errorMessage);
   }
-}
+};
 
 /**
  * Confirma o registro de um usuário utilizando código de confirmação
@@ -279,18 +215,48 @@ const sendConfirmationCode = async (email: string): Promise<void> => {
  */
 const confirmRegistration = async (email: string, codigoConfirmacao: string): Promise<void> => {
   try {
-    const response = await api.post('/auth/confirm-registration', { email, codigo_confirmacao: codigoConfirmacao });
-    return response.data;
-  } catch (error) {
-    throw new Error('Erro ao confirmar o cadastro.');
+    await api.post('/auth/confirm-registration', { 
+      email, 
+      codigo_confirmacao: parseInt(codigoConfirmacao) 
+    });
+    Toast.show({
+      type: "success",
+      text1: "Conta confirmada!",
+      text2: "Sua conta foi ativada com sucesso.",
+    });
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.detail || 'Erro ao confirmar o cadastro.';
+    Toast.show({
+      type: "error",
+      text1: "Erro",
+      text2: errorMessage,
+    });
+    throw new Error(errorMessage);
   }
-}
+};
 
 /**
- * Efetua o logout do usuário, removendo dados do AsyncStorage e interrompendo a rotina de atualização do token
+ * Efetua o logout do usuário
  */
 const doLogout = async (): Promise<void> => {
   try {
+    const accessToken = await AsyncStorage.getItem("access_token");
+    const refreshToken = await AsyncStorage.getItem("refresh_token");
+    
+    if (accessToken && refreshToken) {
+      try {
+        await api.post("/auth/logout", {
+          refresh_token: refreshToken
+        }, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+      } catch (error) {
+        console.warn("Erro no logout do servidor:", error);
+      }
+    }
+
     const allKeys = await AsyncStorage.getAllKeys();
     const keysToRemove = allKeys.filter(key => key !== "recordings");
     
@@ -298,10 +264,9 @@ const doLogout = async (): Promise<void> => {
       await AsyncStorage.multiRemove(keysToRemove);
     }
     
-    stopTokenUpdateRoutine();
-  
     router.push("/auth/login");
   } catch (error) {
+    await clearTokens();
     router.push("/auth/login");
   }
 };
@@ -309,30 +274,22 @@ const doLogout = async (): Promise<void> => {
 /**
  * Envia solicitação de redefinição de senha
  * @param email Email do usuário que deseja redefinir a senha
- * @throws Lança erro caso ocorra falha na solicitação
  */
 const requestPasswordReset = async (email: string): Promise<void> => {
   try {
-    const response = await api.post('/auth/password-reset', { email });
-    return response.data;
+    await api.post('/auth/password-reset', { email });
+    Toast.show({
+      type: "success",
+      text1: "Código enviado",
+      text2: "Código de redefinição enviado para seu e-mail.",
+    });
   } catch (error: any) {
-    const errorMessage = error.response?.data?.detail || error.message || "Erro ao enviar solicitação de recuperação.";
-    throw new Error(errorMessage);
-  }
-};
-
-/**
- * Confirma o código de redefinição de senha
- * @param email Email do usuário
- * @param codigoConfirmacao Código de confirmação recebido
- * @throws Lança erro caso ocorra falha na confirmação
- */
-const confirmPasswordReset = async (email: string, codigoConfirmacao: string): Promise<void> => {
-  try {
-    const response = await api.post('/auth/confirm-password-reset', { email, codigo_confirmacao: codigoConfirmacao });
-    return response.data;
-  } catch (error: any) {
-    const errorMessage = error.response?.data?.detail || error.message || "Erro ao confirmar o código de recuperação.";
+    const errorMessage = error.response?.data?.detail || 'Erro ao solicitar redefinição de senha.';
+    Toast.show({
+      type: "error",
+      text1: "Erro",
+      text2: errorMessage,
+    });
     throw new Error(errorMessage);
   }
 };
@@ -342,16 +299,58 @@ const confirmPasswordReset = async (email: string, codigoConfirmacao: string): P
  * @param email Email do usuário
  * @param codigoConfirmacao Código de confirmação recebido
  * @param novaSenha Nova senha escolhida
- * @throws Lança erro caso ocorra falha na redefinição
  */
 const resetPassword = async (email: string, codigoConfirmacao: string, novaSenha: string): Promise<void> => {
   try {
-    const response = await api.post('/auth/confirm-password-reset', { email, codigo_confirmacao: codigoConfirmacao, nova_senha: novaSenha });
-    return response.data;
+    await api.post('/auth/confirm-password-reset', {
+      email,
+      codigo_confirmacao: parseInt(codigoConfirmacao),
+      nova_senha: novaSenha
+    });
+    Toast.show({
+      type: "success",
+      text1: "Senha alterada",
+      text2: "Sua senha foi redefinida com sucesso.",
+    });
   } catch (error: any) {
-    const errorMessage = error.response?.data?.detail || error.message || "Erro ao redefinir a senha.";
+    const errorMessage = error.response?.data?.detail || 'Erro ao redefinir senha.';
+    Toast.show({
+      type: "error",
+      text1: "Erro",
+      text2: errorMessage,
+    });
     throw new Error(errorMessage);
   }
 };
 
-export { confirmPasswordReset, confirmRegistration, doLogin, doLogout, getExpirationTime, register, requestPasswordReset, resetPassword, sendConfirmationCode, updateToken };
+/**
+ * Verifica se o usuário está autenticado
+ * @returns true se o usuário está autenticado, false caso contrário
+ */
+const isAuthenticated = async (): Promise<boolean> => {
+  try {
+    const accessToken = await AsyncStorage.getItem("access_token");
+    
+    if (!accessToken) {
+      return false;
+    }
+
+    const payload = decodeToken(accessToken);
+    const now = Math.floor(Date.now() / 1000);
+    
+    return payload.exp > now;
+  } catch (error) {
+    return false;
+  }
+};
+
+export { 
+  confirmRegistration, 
+  doLogin, 
+  doLogout, 
+  register, 
+  requestPasswordReset, 
+  resetPassword, 
+  sendConfirmationCode,
+  isAuthenticated 
+};
