@@ -2,7 +2,6 @@ import { ParticipantePayload } from "@/types/ParticipantePayload";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from '@react-native-community/netinfo';
 import { api } from "./api";
-import { getToken } from "./util";
 
 const STORAGE_KEYS = {
   USER_PARTICIPANTES: "user_participantes_"
@@ -18,11 +17,9 @@ const EXPIRATION_TIME = 24 * 60 * 60 * 1000;
  */
 export const createParticipante = async (data: ParticipantePayload): Promise<any> => {
   try {
-    const token = await getToken();
-    const response = await api.post(`/participantes`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await api.post(`/participantes`, data);
     
+    await invalidateParticipantCache();
     await AsyncStorage.setItem("hasParticipant", "true");
     await AsyncStorage.setItem("participantId", response.data.id.toString());
     
@@ -69,14 +66,8 @@ export const getParticipante = async (participantId: string): Promise<any> => {
     
     if (isConnected) {
       try {
-        const token = await getToken();
-        const response = await api.get(`/participantes/${participantId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        
-        const participant = response.data;
-                
-        return participant;
+        const response = await api.get(`/participantes/${participantId}`);
+        return response.data;
       } catch (apiError) {
       }
     }
@@ -91,9 +82,8 @@ export const getParticipante = async (participantId: string): Promise<any> => {
         const participants = userParticipantsData.data;
         
         if (participants && Array.isArray(participants)) {
-          const participant = participants.find(p => p.id.toString() === participantId);
+          const participant = participants.find((p: any) => p.id.toString() === participantId);
           if (participant) {
-            await AsyncStorage.setItem("hasParticipant", "true");
             return participant;
           }
         }
@@ -133,15 +123,14 @@ export const getParticipantesByUsuario = async (usuarioId: string): Promise<any[
     const isDataExpired = storedData && (Date.now() - storedData.timestamp > EXPIRATION_TIME);
     
     if (isConnected && (!storedData || isDataExpired)) {
-      const token = await getToken();
-      const response = await api.get(`/participantes/usuario/${usuarioId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get(`/participantes/usuario/${usuarioId}`);
       
       if (response.data && response.data.length > 0) {
         await AsyncStorage.setItem("hasParticipant", "true");
+        await AsyncStorage.setItem("participantId", response.data[0].id.toString());
       } else {
         await AsyncStorage.setItem("hasParticipant", "false");
+        await AsyncStorage.removeItem("participantId");
       }
       
       const dataToStore = {
@@ -156,8 +145,10 @@ export const getParticipantesByUsuario = async (usuarioId: string): Promise<any[
     if (storedData) {
       if (storedData.data && storedData.data.length > 0) {
         await AsyncStorage.setItem("hasParticipant", "true");
+        await AsyncStorage.setItem("participantId", storedData.data[0].id.toString());
       } else {
         await AsyncStorage.setItem("hasParticipant", "false");
+        await AsyncStorage.removeItem("participantId");
       }
       
       return storedData.data;
@@ -190,11 +181,7 @@ export const getParticipantesByUsuario = async (usuarioId: string): Promise<any[
  */
 export const getAllParticipantes = async (): Promise<any[]> => {
   try {
-    const token = await getToken();
-    const response = await api.get(`/participantes`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
+    const response = await api.get(`/participantes`);
     return response.data;
   } catch (error: any) {
     const errorMessage =
@@ -212,14 +199,15 @@ export const getAllParticipantes = async (): Promise<any[]> => {
  * @throws Lança um erro caso a atualização falhe
  */
 export const updateParticipante = async (
-  participantId: string, data: ParticipantePayload): Promise<void> => {
+  participantId: string, 
+  data: ParticipantePayload
+): Promise<void> => {
   try {
-    const token = await getToken();
-    const response = await api.patch(`/participantes/${participantId}`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await api.patch(`/participantes/${participantId}`, data);
     
+    await invalidateParticipantCache();
     await AsyncStorage.setItem("hasParticipant", "true");
+    await AsyncStorage.setItem("participantId", participantId);
     
     const userId = await AsyncStorage.getItem("userId");
     if (userId) {
@@ -256,10 +244,9 @@ export const updateParticipante = async (
  */
 export const deleteParticipante = async (participantId: string): Promise<void> => {
   try {
-    const token = await getToken();
-    await api.delete(`/participantes/${participantId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    await api.delete(`/participantes/${participantId}`);
+    
+    await invalidateParticipantCache();
     
     const currentParticipantId = await AsyncStorage.getItem("participantId");
     if (currentParticipantId === participantId) {
@@ -273,14 +260,14 @@ export const deleteParticipante = async (participantId: string): Promise<void> =
       
       if (storedDataStr) {
         const storedData = JSON.parse(storedDataStr);
-        const updatedData = storedData.data.filter((participant: any) => 
+        const filteredData = storedData.data.filter((participant: any) => 
           participant.id.toString() !== participantId);
         
-        storedData.data = updatedData;
+        storedData.data = filteredData;
         storedData.timestamp = Date.now();
         await AsyncStorage.setItem(storageKey, JSON.stringify(storedData));
         
-        if (updatedData.length === 0) {
+        if (filteredData.length === 0) {
           await AsyncStorage.setItem("hasParticipant", "false");
         }
       }
@@ -295,23 +282,49 @@ export const deleteParticipante = async (participantId: string): Promise<void> =
 };
 
 /**
+ * Invalida o cache de verificação de participante para forçar nova consulta
+ */
+export const invalidateParticipantCache = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem("hasParticipant");
+  } catch (error) {
+    console.error("Erro ao invalidar cache de participante:", error);
+  }
+};
+
+/**
  * Verifica se existe um participante vinculado ao usuário
  * @returns Retorna true se o participante existir, caso contrário false
  */
 export const checkParticipantExists = async (): Promise<boolean> => {
   try {
     const hasParticipantStorage = await AsyncStorage.getItem("hasParticipant");
+    const participantId = await AsyncStorage.getItem("participantId");
     
-    if (hasParticipantStorage === "true" || hasParticipantStorage === "false") {
-      return hasParticipantStorage === "true";
+    if (hasParticipantStorage === "true" && participantId) {
+      return true;
+    }
+    
+    if (hasParticipantStorage === "false") {
+      return false;
     }
     
     const userId = await AsyncStorage.getItem("userId");
+    
     if (userId) {
-      const participantes = await getParticipantesByUsuario(userId);
-      const hasParticipants = participantes && participantes.length > 0;
-      await AsyncStorage.setItem("hasParticipant", hasParticipants ? "true" : "false");
-      return hasParticipants;
+      try {
+        const participants = await getParticipantesByUsuario(userId);
+        const hasParticipant = participants && participants.length > 0;
+        
+        await AsyncStorage.setItem("hasParticipant", hasParticipant.toString());
+        if (hasParticipant && participants[0]?.id) {
+          await AsyncStorage.setItem("participantId", participants[0].id.toString());
+        }
+        
+        return hasParticipant;
+      } catch (error) {
+        return hasParticipantStorage === "false";
+      }
     }
     
     return false;

@@ -240,8 +240,7 @@ export default function DadosParticipanteScreen() {
 
       if (participantId) {
         await updateParticipante(participantId, payload);
-        await AsyncStorage.setItem("hasParticipant", "true");
-
+        
         Toast.show({
           type: "success",
           text1: "Sucesso!",
@@ -255,7 +254,6 @@ export default function DadosParticipanteScreen() {
         const response = await createParticipante(payload);
         if (response && response.id) {
           setParticipantId(response.id.toString());
-          await AsyncStorage.setItem("hasParticipant", "true");
         }
 
         Toast.show({
