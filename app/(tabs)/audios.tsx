@@ -602,9 +602,10 @@ export default function AudiosScreen() {
       }
 
       await uploadAudioFile(
-        idVocalizacao,
         fileUri,
-        selectedAudioParticipanteId
+        selectedAudioParticipanteId,
+        `recording_${Date.now()}.wav`,
+        idVocalizacao
       );
 
       if (selectedRecording) {
@@ -686,9 +687,10 @@ export default function AudiosScreen() {
           }
 
           await uploadAudioFile(
-            recording.vocalizationId,
             recording.uri,
-            recording.participanteId
+            recording.participanteId,
+            `recording_${recording.timestamp}.wav`,
+            recording.vocalizationId
           );
 
           successCount++;
