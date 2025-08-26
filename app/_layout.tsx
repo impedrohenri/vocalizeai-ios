@@ -1,6 +1,7 @@
-import { getExpirationTime, updateToken } from "@/services/authService";
+import { isAuthenticated } from "@/services/authService";
 import { getParticipantesByUsuario } from "@/services/participanteService";
 import { getUser } from "@/services/usuarioService";
+import { checkAndClearOldCache } from "@/services/util";
 import { getVocalizacoes } from "@/services/vocalizacoesService";
 import MaskedView from "@react-native-masked-view/masked-view";
 import * as Font from "expo-font";
@@ -48,26 +49,20 @@ export default function RootLayout() {
   const checkToken = async () => {
     try {
       await loadFonts();
+      
+      await checkAndClearOldCache();
 
-      const now = Date.now();
-      const expirationTime = await getExpirationTime();
+      const authenticated = await isAuthenticated();
 
-      if (expirationTime > now) {
+      if (authenticated) {
         router.replace("/(tabs)");
       } else {
-        await updateToken();
-        const newExpirationTime = await getExpirationTime();
-
-        if (newExpirationTime > now) {
-          router.replace("/(tabs)");
-        } else {
-          router.replace("/auth/login");
-        }
+        router.replace("/auth/login");
       }
     } catch (error) {
       Toast.show({
         type: "error",
-        text1: "Erro ao verificar token",
+        text1: "Erro ao verificar autenticação",
         text2: "Por favor, faça login novamente",
       });
       router.replace("/auth/login");
