@@ -85,7 +85,7 @@ api.interceptors.response.use(
         }, {
           headers: {
             "Content-Type": "application/json",
-            "X-API-Key": "b5694358-82bd-4bf0-81ab-32df891b5f86",
+            "X-API-Key": EXPO_PUBLIC_API_KEY,
           }
         });
 
