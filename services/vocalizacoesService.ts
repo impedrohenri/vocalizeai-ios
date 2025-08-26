@@ -1,6 +1,6 @@
 import { Vocalizacao } from "@/types/Vocalizacao";
 import { api } from "./api";
-import { getRole, getToken, getUserId } from "./util";
+import { getRole, getUserId } from "./util";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 
@@ -25,10 +25,7 @@ export const getVocalizacoes = async (): Promise<Vocalizacao[]> => {
 
   const fetchFromApi = async (): Promise<Vocalizacao[]> => {
     try {
-      const token = await getToken();
-      const response = await api.get("/vocalizacoes", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get("/vocalizacoes");
       
       const dataToStore = {
         data: response.data,
@@ -93,11 +90,8 @@ export const createVocalizacoes = async (nome: string, descricao: string): Promi
     if (!nome || !descricao) {
       throw new Error("Nome e descrição são obrigatórios.");
     }
-    const token = await getToken();
 
-    const response = await api.post(`/vocalizacoes`, { nome, descricao }, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await api.post(`/vocalizacoes`, { nome, descricao });
     
     const storedDataStr = await AsyncStorage.getItem(STORAGE_KEY);
     if (storedDataStr) {
@@ -131,7 +125,6 @@ export const updateVocalizacoes = async (vocalizacaoId: string, data: Vocalizaca
   const STORAGE_KEY = "vocalizations";
   
   try {
-    const token = await getToken();
     const role = await getRole()
     const userId = await getUserId()
 
@@ -139,9 +132,7 @@ export const updateVocalizacoes = async (vocalizacaoId: string, data: Vocalizaca
       throw new Error("Você não tem permissão para atualizar vocalizações.");
     }
 
-    await api.patch(`/vocalizacoes/${vocalizacaoId}`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    await api.patch(`/vocalizacoes/${vocalizacaoId}`, data);
     
     const storedDataStr = await AsyncStorage.getItem(STORAGE_KEY);
     if (storedDataStr) {
@@ -175,16 +166,13 @@ export const deleteVocalizacoes = async (vocalizacaoId: string): Promise<void> =
   const STORAGE_KEY = "vocalizations";
   
   try {
-    const token = await getToken();
     const role = await getRole()
 
     if (role !== "admin") {
       throw new Error("Você não tem permissão para deletar vocalizações.");
     }
 
-    await api.delete(`/vocalizacoes/${vocalizacaoId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    await api.delete(`/vocalizacoes/${vocalizacaoId}`);
     
     const storedDataStr = await AsyncStorage.getItem(STORAGE_KEY);
     if (storedDataStr) {

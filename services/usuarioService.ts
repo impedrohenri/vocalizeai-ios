@@ -2,7 +2,7 @@ import { notifyUsernameUpdated } from "@/components/Header";
 import { UsuarioUpdate } from "@/types/UsuarioUpdate";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
-import { getToken, getUserId } from "./util";
+import { getUserId } from "./util";
 import NetInfo from '@react-native-community/netinfo';
 
 const STORAGE_KEYS = {
@@ -18,11 +18,7 @@ const EXPIRATION_TIME = 24 * 60 * 60 * 1000;
  */
 export const getAllUsers = async (): Promise<any> => {
   try {
-    const token = await getToken();
-    const response = await api.get("/usuarios", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
+    const response = await api.get("/usuarios");
     return response.data;
   } catch (error: any) {
     const errorMessage =
@@ -51,10 +47,7 @@ export const getUser = async (): Promise<any> => {
     const isDataExpired = storedData && (Date.now() - storedData.timestamp > EXPIRATION_TIME);
     
     if (isConnected && (!storedData || isDataExpired)) {
-      const token = await getToken();
-      const response = await api.get(`/usuarios/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get(`/usuarios/${userId}`);
       
       const dataToStore = {
         data: response.data,
@@ -96,12 +89,7 @@ export const getUser = async (): Promise<any> => {
  */
 export const getUserById = async (userId: number): Promise<any> => {
   try {
-    const token = await getToken();
-
-    const response = await api.get(`/usuarios/${userId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
+    const response = await api.get(`/usuarios/${userId}`);
     return response.data;
   } catch (error: any) {
     const errorMessage =
@@ -143,7 +131,6 @@ export const updateUser = async (data: UsuarioUpdate): Promise<{
       };
     }
 
-    const token = await getToken();
     const userId = await getUserId();
     if (!userId) throw new Error("Usuário não autenticado");
 
@@ -152,13 +139,10 @@ export const updateUser = async (data: UsuarioUpdate): Promise<{
     if (data.nome) dadosAtualizados.nome = data.nome;
     if (data.celular) dadosAtualizados.celular = data.celular;
 
-    const response = await api.patch(`/usuarios/${userId}`, dadosAtualizados, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await api.patch(`/usuarios/${userId}`, dadosAtualizados);
 
     if (data.nome && response.data.usuario && response.data.usuario.nome) {
       await AsyncStorage.setItem("username", response.data.usuario.nome);
-
       notifyUsernameUpdated();
     }
 
@@ -189,13 +173,10 @@ export const updateUserAdmin = async (data: UsuarioUpdate): Promise<void> => {
       throw new Error("Formato de email inválido.");
     }
 
-    const token = await getToken();
     const userId = await getUserId();
     if (!userId) throw new Error("Usuário não autenticado");
 
-    await api.patch(`/usuarios/${data.id}`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    await api.patch(`/usuarios/${data.id}`, data);
   } catch (error: any) {
     const errorMessage =
       error.response?.data?.detail ||
@@ -212,11 +193,8 @@ export const updateUserAdmin = async (data: UsuarioUpdate): Promise<void> => {
  * @throws Error se o usuário não estiver autenticado ou se ocorrer um erro na requisição
  */
 export const deleteUser = async (id: any): Promise<void> => {
-  const token = await getToken();
   const userId = await getUserId();
   if (!userId) throw new Error("Usuário não autenticado");
 
-  await api.delete(`/usuarios/${id}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  await api.delete(`/usuarios/${id}`);
 }
