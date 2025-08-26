@@ -4,7 +4,7 @@ export default {
   expo: {
     name: "VocalizeAI",
     slug: "vocalizeai",
-    version: "1.1.1",
+    version: "1.1.2",
     orientation: "portrait",
     icon: "./assets/images/splashscreen_logo.png",
     scheme: "myapp",
@@ -67,12 +67,6 @@ export default {
 
     plugins: [
       "expo-router",
-      [
-        "@config-plugins/ffmpeg-kit-react-native",
-        {
-          variant: "audio"
-        }
-      ],
       [
         "expo-splash-screen",
         {
