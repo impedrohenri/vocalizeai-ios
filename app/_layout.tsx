@@ -3,6 +3,7 @@ import { getParticipantesByUsuario } from "@/services/participanteService";
 import { getUser } from "@/services/usuarioService";
 import { checkAndClearOldCache } from "@/services/util";
 import { getVocalizacoes } from "@/services/vocalizacoesService";
+import notificationService from "@/services/notificationService";
 import MaskedView from "@react-native-masked-view/masked-view";
 import * as Font from "expo-font";
 import { Slot, useRouter } from "expo-router";
@@ -51,6 +52,8 @@ export default function RootLayout() {
       await loadFonts();
       
       await checkAndClearOldCache();
+
+      await notificationService.initialize();
 
       const authenticated = await isAuthenticated();
 
