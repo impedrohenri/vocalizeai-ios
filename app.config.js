@@ -4,7 +4,7 @@ export default {
   expo: {
     name: "VocalizeAI",
     slug: "vocalizeai",
-    version: "1.1.2",
+    version: "1.2.0",
     orientation: "portrait",
     icon: "./assets/images/splashscreen_logo.png",
     scheme: "myapp",
@@ -124,7 +124,8 @@ export default {
           icon: "./assets/images/splashscreen_logo.png",
           color: "#ffffff",
           androidMode: "default",
-          androidCollapsedTitle: "Gravação em andamento"
+          androidCollapsedTitle: "VocalizeAI",
+          defaultChannel: "default"
         }
       ],
       [

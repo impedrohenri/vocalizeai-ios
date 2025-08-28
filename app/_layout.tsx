@@ -50,7 +50,7 @@ export default function RootLayout() {
   const checkToken = async () => {
     try {
       await loadFonts();
-      
+
       await checkAndClearOldCache();
 
       await notificationService.initialize();

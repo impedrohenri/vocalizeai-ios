@@ -189,12 +189,10 @@ export default function LoginScreen() {
           <ButtonCustom
             title="Conheça o nosso projeto"
             variant="link"
-            onPress={() =>
-              Linking.openURL("https://vocalizeai.app.br")
-            }
+            onPress={() => Linking.openURL("https://vocalizeai.app.br")}
           />
           <Text style={{ textAlign: "center", margin: 8, height: 54 }}>
-            v.1.1.1
+            v.1.2.0
           </Text>
         </View>
       </ScrollView>

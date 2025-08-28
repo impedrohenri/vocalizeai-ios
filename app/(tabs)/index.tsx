@@ -486,7 +486,7 @@ export default function HomeScreen() {
     }
   };
 
-    const handleDiscard = async () => {
+  const handleDiscard = async () => {
     try {
       setIsLoading(true);
 
@@ -495,7 +495,7 @@ export default function HomeScreen() {
       } else {
         await BackgroundAudioRecorder.forceStopService();
       }
-      
+
       await BackgroundAudioRecorder.resetState();
 
       if (outputFile && !isRecording) {
@@ -787,7 +787,7 @@ export default function HomeScreen() {
         duration: duration,
         participanteId: selectedParticipanteId,
         vocalizationId: selectedVocalizationId,
-        vocalizationName: vocalizationName || 'Desconhecido',
+        vocalizationName: vocalizationName || "Desconhecido",
       });
 
       const existingRecordings = await AsyncStorage.getItem("recordings");
@@ -834,7 +834,7 @@ export default function HomeScreen() {
   }
 
   useFocusEffect(
-    useCallback(() => {  
+    useCallback(() => {
       const resetScreenState = async () => {
         await verifyParticipantExists();
         await loadParticipantes();
