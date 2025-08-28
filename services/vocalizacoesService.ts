@@ -8,10 +8,11 @@ import NetInfo from "@react-native-community/netinfo";
  * Obtém a lista de todas as vocalizações salva no AsyncStorage,
  * verifica se os dados estão armazenados localmente e se estão expirados.
  * Se não houver conexão com a internet, tenta usar os dados armazenados
+ * @param forceRefresh Se true, força a busca na API mesmo com dados em cache válidos
  * @returns Lista de vocalizações
  * @throws Lança um erro caso ocorra alguma falha ao buscar as vocalizações
  */
-export const getVocalizacoes = async (): Promise<Vocalizacao[]> => {
+export const getVocalizacoes = async (forceRefresh: boolean = false): Promise<Vocalizacao[]> => {
   const STORAGE_KEY = "vocalizations";
   
   const getStoredData = async (): Promise<{data: Vocalizacao[], timestamp: number} | null> => {
@@ -48,7 +49,7 @@ export const getVocalizacoes = async (): Promise<Vocalizacao[]> => {
     const isDataExpired = storedData && 
       (Date.now() - storedData.timestamp > EXPIRATION_TIME);
     
-    if (isConnected && (!storedData || isDataExpired)) {
+    if (isConnected && (!storedData || isDataExpired || forceRefresh)) {
       return await fetchFromApi();
     } 
     

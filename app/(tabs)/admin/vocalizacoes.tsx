@@ -80,10 +80,10 @@ export default function VocalizacoesScreen() {
     }
   }, []);
 
-  const fetchVocalizacoes = useCallback(async () => {
+  const fetchVocalizacoes = useCallback(async (forceRefresh: boolean = false) => {
     setIsLoading(true);
     try {
-      const vocalizacaosList = await getVocalizacoes();
+      const vocalizacaosList = await getVocalizacoes(forceRefresh);
       setVocalizacoes(vocalizacaosList);
     } catch (error: any) {
       Toast.show({
@@ -99,7 +99,7 @@ export default function VocalizacoesScreen() {
   useFocusEffect(
     useCallback(() => {
       checkAdminRole();
-      fetchVocalizacoes();
+      fetchVocalizacoes(true);
     }, [])
   );
 
@@ -183,7 +183,7 @@ export default function VocalizacoesScreen() {
       }
 
       setShowModal(false);
-      fetchVocalizacoes();
+      fetchVocalizacoes(true);
     } catch (error: any) {
       Toast.show({
         type: "error",
@@ -218,7 +218,7 @@ export default function VocalizacoesScreen() {
       });
 
       setShowConfirmModal(false);
-      fetchVocalizacoes();
+      fetchVocalizacoes(true);
     } catch (error: any) {
       Toast.show({
         type: "error",
