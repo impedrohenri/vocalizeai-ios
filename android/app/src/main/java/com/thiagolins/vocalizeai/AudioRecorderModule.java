@@ -262,6 +262,30 @@ public class AudioRecorderModule extends ReactContextBaseJavaModule implements L
     }
 
     @ReactMethod
+    public void discardRecording(Promise promise) {
+        try {
+            if (!isRecording) {
+                promise.reject("INVALID_STATE", "Não há gravação ativa para descartar");
+                return;
+            }
+            
+            Intent serviceIntent = new Intent(reactContext, ForegroundAudioRecorderService.class);
+            serviceIntent.setAction(ForegroundAudioRecorderService.ACTION_DISCARD_RECORDING);
+            reactContext.startService(serviceIntent);
+            
+            isRecording = false;
+            isPaused = false;
+            
+            WritableMap result = Arguments.createMap();
+            result.putBoolean("success", true);
+            promise.resolve(result);
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao descartar gravação: " + e.getMessage());
+            promise.reject("DISCARD_RECORDING_ERROR", e.getMessage());
+        }
+    }
+
+    @ReactMethod
     public void startRecording(double elapsedTimeBeforePause, Promise promise) {
         try {
             if (ContextCompat.checkSelfPermission(reactContext, Manifest.permission.RECORD_AUDIO) 

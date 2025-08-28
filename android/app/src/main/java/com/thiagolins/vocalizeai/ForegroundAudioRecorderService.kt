@@ -37,6 +37,7 @@ class ForegroundAudioRecorderService : Service() {
     const val NOTIFICATION_ID = 1001
     const val ACTION_START_RECORDING = "com.thiagolins.vocalizeai.START_RECORDING"
     const val ACTION_STOP_RECORDING = "com.thiagolins.vocalizeai.STOP_RECORDING"
+    const val ACTION_DISCARD_RECORDING = "com.thiagolins.vocalizeai.DISCARD_RECORDING"
     const val ACTION_PAUSE_RECORDING = "com.thiagolins.vocalizeai.PAUSE_RECORDING"
     const val ACTION_RESUME_RECORDING = "com.thiagolins.vocalizeai.RESUME_RECORDING"
     const val EXTRA_ELAPSED_TIME = "com.thiagolins.vocalizeai.ELAPSED_TIME"
@@ -147,6 +148,11 @@ class ForegroundAudioRecorderService : Service() {
         stopForeground(true)
         stopSelf()
       }
+      ACTION_DISCARD_RECORDING -> {
+        discardRecording()
+        stopForeground(true)
+        stopSelf()
+      }
     }
 
     return START_STICKY
@@ -169,7 +175,7 @@ class ForegroundAudioRecorderService : Service() {
             NotificationCompat.Builder(this, CHANNEL_ID)
                     .setContentTitle(contentText)
                     .setContentText("Tempo: $formattedTime")
-                    .setSmallIcon(R.drawable.ic_notification)
+                    .setSmallIcon(R.drawable.ic_white_v_notification)
                     .setContentIntent(pendingIntent)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setOngoing(true)
@@ -470,6 +476,64 @@ class ForegroundAudioRecorderService : Service() {
     }
   }
 
+  private fun discardRecording(): String? {
+    if (!isRecording) {
+      return null
+    }
+
+    timer?.cancel()
+    timer = null
+
+    val finalOutputFile = outputFile
+
+    try {
+      try {
+        mediaRecorder?.stop()
+      } catch (e: Exception) {
+        Log.w(TAG, "MediaRecorder stop failed during discard: ${e.message}")
+      }
+
+      try {
+        mediaRecorder?.reset()
+        mediaRecorder?.release()
+      } catch (e: Exception) {
+        Log.w(TAG, "MediaRecorder release failed during discard: ${e.message}")
+      } finally {
+        mediaRecorder = null
+      }
+
+      // Delete the file immediately for discarded recordings
+      finalOutputFile?.let {
+        try {
+          File(it).delete()
+          Log.i(TAG, "Discarded recording file deleted: $it")
+        } catch (deleteError: Exception) {
+          Log.w(TAG, "Failed to delete discarded file: ${deleteError.message}")
+        }
+      }
+
+      isRecording = false
+      isPaused = false
+
+      val stateIntent =
+              Intent("com.thiagolins.vocalizeai.RECORDING_STATUS")
+                      .putExtra("isRecording", false)
+                      .putExtra("isPaused", false)
+                      .putExtra("outputFile", null as String?)
+                      .putExtra("currentTime", 0L)
+                      .putExtra("discardedFromNotification", true)
+
+      sendBroadcastWithRetry(stateIntent)
+
+      resetRecordingState(null)
+      return null
+    } catch (e: Exception) {
+      Log.e(TAG, "Error discarding recording: ${e.message}")
+      resetRecordingState(null)
+      return null
+    }
+  }
+
   private fun validateAudioFile(file: File): Boolean {
     try {
       if (!file.exists()) {
@@ -634,7 +698,7 @@ class ForegroundAudioRecorderService : Service() {
             NotificationCompat.Builder(this, CHANNEL_ID)
                     .setContentTitle(if (isPaused) "Gravação pausada" else "Gravação em andamento")
                     .setContentText("Tempo: $formattedTime")
-                    .setSmallIcon(R.drawable.ic_notification)
+                    .setSmallIcon(R.drawable.ic_white_v_notification)
                     .setContentIntent(pendingIntent)
                     .setPriority(NotificationCompat.PRIORITY_LOW)
                     .setOngoing(true)

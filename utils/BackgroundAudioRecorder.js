@@ -4,7 +4,7 @@ import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 const { BackgroundAudioRecorder } = NativeModules;
 
 if (!BackgroundAudioRecorder) {
-  console.error('Módulo nativo BackgroundAudioRecorder não encontrado. A funcionalidade de gravação em segundo plano pode não funcionar.');
+  console.warn('Módulo nativo BackgroundAudioRecorder não encontrado. A funcionalidade de gravação em segundo plano pode não funcionar.');
 }
 
 const BackgroundAudioRecorderEmitter = BackgroundAudioRecorder
@@ -694,6 +694,45 @@ class AudioRecorderService {
       return true;
     } catch (error) {
       console.error('Erro ao parar gravação:', error);
+      throw error;
+    }
+  }
+
+  async discardRecording() {
+    if (!BackgroundAudioRecorder) {
+      throw new Error('Módulo nativo BackgroundAudioRecorder não disponível');
+    }
+
+    if (!this._isRecording) {
+      throw new Error('Nenhuma gravação ativa para descartar');
+    }
+
+    try {
+      await BackgroundAudioRecorder.discardRecording();
+      
+      // Reset local state immediately
+      this._isRecording = false;
+      this._isPaused = false;
+      this._recordingTime = 0;
+      this._outputFile = null;
+
+      this._statusChangeListeners.forEach(listener => {
+        try {
+          listener({
+            isRecording: false,
+            isPaused: false,
+            currentTime: 0,
+            outputFile: null,
+            discardedFromNotification: true
+          });
+        } catch (error) {
+          console.error('Error in listener after discardRecording:', error);
+        }
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao descartar gravação:', error);
       throw error;
     }
   }
