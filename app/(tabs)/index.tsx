@@ -2,6 +2,7 @@ import ButtonCustom from "@/components/Button";
 import ConfirmationModal from "@/components/ConfirmationModal";
 import ParticipanteSelector from "@/components/ParticipanteSelect";
 import VocalizationSelect from "@/components/VocalizationSelect";
+import { saveAudioLocally } from "@/services/audioService";
 import {
   checkParticipantExists,
   getParticipantesByUsuario,
@@ -55,7 +56,7 @@ export default function HomeScreen() {
   const [hasParticipant, setHasParticipant] = useState<boolean | null>(null);
   const [checkingParticipant, setCheckingParticipant] = useState(true);
   const [actionCooldown, setActionCooldown] = useState(false);
-  const cooldownTimeout = useRef<NodeJS.Timeout | null>(null);
+  const cooldownTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const timeUpdateListenerRef = useRef<Function | null>(null);
   const statusChangeListenerRef = useRef<Function | null>(null);
   const recordingCompleteListenerRef = useRef<Function | null>(null);
@@ -305,27 +306,7 @@ export default function HomeScreen() {
 
       setOutputFile(filePath);
 
-      if (vocalizations.length === 0) {
-        fetchVocalizations();
-        setLoadingVocalizations(true);
-        try {
-          const vocs = await getVocalizacoes();
-          setVocalizations(vocs);
-
-          if (!selectedVocalizationId && vocs.length > 0) {
-            setSelectedVocalizationId(vocs[0].id);
-          }
-        } catch (error) {
-          Toast.show({
-            type: "error",
-            text1: error instanceof Error ? error.message : "Erro",
-            text2: "Não foi possível carregar os rótulos de vocalizações",
-          });
-          return;
-        } finally {
-          setLoadingVocalizations(false);
-        }
-      }
+      await fetchVocalizations();
       await loadParticipantes();
       setShowVocalizationModal(true);
     } catch (error) {
@@ -505,31 +486,35 @@ export default function HomeScreen() {
     }
   };
 
-  const handleDiscard = async () => {
+    const handleDiscard = async () => {
     try {
       setIsLoading(true);
 
-      await BackgroundAudioRecorder.forceStopService();
+      if (isRecording) {
+        await BackgroundAudioRecorder.discardRecording();
+      } else {
+        await BackgroundAudioRecorder.forceStopService();
+      }
+      
       await BackgroundAudioRecorder.resetState();
 
-      if (outputFile) {
+      if (outputFile && !isRecording) {
         try {
           const deleted = await FileOperations.deleteFile(outputFile);
 
           if (!deleted) {
-            throw new Error(
-              `Não foi possível excluir o arquivo: ${outputFile}`
-            );
+            Toast.show({
+              type: "error",
+              text1: "Erro ao excluir arquivo",
+              text2: `Não foi possível excluir o arquivo: ${outputFile}`,
+            });
           }
         } catch (error) {
           Toast.show({
             type: "error",
-            text1: "Erro ao excluir arquivo",
-            text2: "Erro ao excluir o arquivo de áudio temporário.",
+            text1: "Erro ao excluir arquivo temporário",
+            text2: error instanceof Error ? error.message : "Erro desconhecido",
           });
-          setShowDiscardModal(false);
-          setIsLoading(false);
-          return;
         }
       }
 
@@ -546,11 +531,8 @@ export default function HomeScreen() {
       }
 
       setTimeout(() => {
-        Toast.show({
-          type: "success",
-          text1: "Gravação descartada",
-          text2: "A gravação foi descartada com sucesso.",
-        });
+        setActionCooldown(false);
+        setIsProcessingAction(false);
       }, 300);
     } catch (error) {
       setOutputFile(null);
@@ -561,21 +543,18 @@ export default function HomeScreen() {
       setShowDiscardModal(false);
 
       setTimeout(() => {
-        Toast.show({
-          type: "error",
-          text1: "Erro ao descartar gravação",
-          text2: "Erro ao descartar a gravação.",
-        });
+        setActionCooldown(false);
+        setIsProcessingAction(false);
       }, 300);
     } finally {
       setIsLoading(false);
     }
   };
 
-  async function fetchVocalizations() {
+  async function fetchVocalizations(forceRefresh: boolean = false) {
     setLoadingVocalizations(true);
     try {
-      const vocalizations = await getVocalizacoes();
+      const vocalizations = await getVocalizacoes(forceRefresh);
       setVocalizations(vocalizations);
 
       if (!selectedVocalizationId && vocalizations.length > 0) {
@@ -799,6 +778,18 @@ export default function HomeScreen() {
       }
 
       const duration = recordingTime;
+      const vocalizationName = vocalizations.find(
+        (v) => v.id === selectedVocalizationId
+      )?.nome;
+
+      await saveAudioLocally({
+        uri: newUri,
+        duration: duration,
+        participanteId: selectedParticipanteId,
+        vocalizationId: selectedVocalizationId,
+        vocalizationName: vocalizationName || 'Desconhecido',
+      });
+
       const existingRecordings = await AsyncStorage.getItem("recordings");
       const recordings = existingRecordings
         ? JSON.parse(existingRecordings)
@@ -809,9 +800,7 @@ export default function HomeScreen() {
         timestamp: Date.now(),
         duration: duration,
         vocalizationId: selectedVocalizationId,
-        vocalizationName: vocalizations.find(
-          (v) => v.id === selectedVocalizationId
-        )?.nome,
+        vocalizationName: vocalizationName,
         participanteId: selectedParticipanteId,
         status: "pending",
       });
@@ -845,10 +834,11 @@ export default function HomeScreen() {
   }
 
   useFocusEffect(
-    useCallback(() => {
+    useCallback(() => {  
       const resetScreenState = async () => {
         await verifyParticipantExists();
         await loadParticipantes();
+        await fetchVocalizations(true);
         try {
           const status = await BackgroundAudioRecorder.getStatus();
 
