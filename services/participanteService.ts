@@ -288,7 +288,7 @@ export const invalidateParticipantCache = async (): Promise<void> => {
   try {
     await AsyncStorage.removeItem("hasParticipant");
   } catch (error) {
-    console.error("Erro ao invalidar cache de participante:", error);
+    throw error
   }
 };
 
@@ -329,7 +329,6 @@ export const checkParticipantExists = async (): Promise<boolean> => {
     
     return false;
   } catch (error) {
-    console.error("Erro ao verificar participante:", error);
     return false;
   }
 };

@@ -105,7 +105,6 @@ export const checkAndClearOldCache = async (): Promise<boolean> => {
         
         return false;
     } catch (error) {
-        console.error("Erro ao verificar versão da API:", error);
         return false;
     }
 };
@@ -125,7 +124,7 @@ export const clearDataCache = async (): Promise<void> => {
         }
         
     } catch (error) {
-        console.error("Erro ao limpar cache de dados:", error);
+        throw error;
     }
 };
 
@@ -150,7 +149,6 @@ export const getCacheInfo = async (): Promise<{
             cacheKeys
         };
     } catch (error) {
-        console.error("Erro ao obter informações do cache:", error);
         return {
             apiVersion: null,
             totalKeys: 0,
