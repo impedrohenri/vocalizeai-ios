@@ -1,5 +1,7 @@
 import { api } from "./api";
 import { AudioItem } from "@/types/Audio";
+import notificationService from "./notificationService";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
  * Faz upload de um arquivo de áudio
@@ -192,5 +194,112 @@ export const updateAudio = async (audioId: number, updateData: Partial<AudioItem
       error.message ||
       "Erro ao atualizar áudio.";
     throw new Error(errorMessage);
+  }
+};
+
+/**
+ * Salva áudio localmente com status pending
+ * @param audioData Dados do áudio
+ * @returns Promise
+ */
+export const saveAudioLocally = async (audioData: {
+  uri: string;
+  duration: number;
+  participanteId: number;
+  vocalizationId: number;
+  vocalizationName: string;
+}): Promise<void> => {
+  try {
+    const existingAudios = await getLocalAudios();
+    const newAudio = {
+      ...audioData,
+      status: 'pending',
+      timestamp: Date.now(),
+    };
+    
+    const updatedAudios = [...existingAudios, newAudio];
+    await AsyncStorage.setItem('@vocalizeai_audios', JSON.stringify(updatedAudios));
+    
+    await notificationService.updateNotifications();
+    
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Obtém áudios salvos localmente
+ * @returns Promise com lista de áudios locais
+ */
+export const getLocalAudios = async (): Promise<any[]> => {
+  try {
+    const audiosData = await AsyncStorage.getItem('@vocalizeai_audios');
+    return audiosData ? JSON.parse(audiosData) : [];
+  } catch (error) {
+    return [];
+  }
+};
+
+/**
+ * Remove áudio da lista local
+ * @param timestamp Timestamp do áudio para remover
+ * @returns Promise
+ */
+export const removeLocalAudio = async (timestamp: number): Promise<void> => {
+  try {
+    const existingAudios = await getLocalAudios();
+    const filteredAudios = existingAudios.filter(audio => audio.timestamp !== timestamp);
+    await AsyncStorage.setItem('@vocalizeai_audios', JSON.stringify(filteredAudios));
+    
+    await notificationService.updateNotifications();
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Marca áudio como enviado (remove status pending)
+ * @param timestamp Timestamp do áudio
+ * @returns Promise
+ */
+export const markAudioAsSent = async (timestamp: number): Promise<void> => {
+  try {
+    const existingAudios = await getLocalAudios();
+    const updatedAudios = existingAudios.map(audio => 
+      audio.timestamp === timestamp 
+        ? { ...audio, status: 'sent' }
+        : audio
+    );
+    await AsyncStorage.setItem('@vocalizeai_audios', JSON.stringify(updatedAudios));
+    
+    await notificationService.updateNotifications();
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Obtém apenas áudios pendentes
+ * @returns Promise com lista de áudios pendentes
+ */
+export const getPendingAudios = async (): Promise<any[]> => {
+  try {
+    const allAudios = await getLocalAudios();
+    return allAudios.filter(audio => audio.status === 'pending');
+  } catch (error) {
+    return [];
+  }
+};
+
+/**
+ * Limpa todos os áudios locais
+ * @returns Promise
+ */
+export const clearLocalAudios = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem('@vocalizeai_audios');
+    await notificationService.updateNotifications();
+  } catch (error) {
+    throw error;
   }
 };
