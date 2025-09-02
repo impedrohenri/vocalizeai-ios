@@ -179,12 +179,6 @@ api.interceptors.response.use(
           "saved_password"
         ]);
         
-        Toast.show({
-          type: "error",
-          text1: "Sessão expirada",
-          text2: "Por favor, faça login novamente",
-        });
-        
         router.push("/auth/login");
         
         return Promise.reject(error);

@@ -56,10 +56,18 @@ export default function RootLayout() {
   const checkToken = async () => {
     try {
       await loadFonts();
-      await checkAndClearOldCache();
-      await notificationService.initialize();
+      try {
+        await checkAndClearOldCache();
+      } catch {}
 
-      const authenticated = await isAuthenticated();
+      notificationService.initialize().catch(() => {});
+
+      let authenticated = false;
+      try {
+        authenticated = await isAuthenticated();
+      } catch {
+        authenticated = false;
+      }
 
       if (authenticated) {
         router.replace("/(tabs)");
@@ -84,6 +92,13 @@ export default function RootLayout() {
 
   useEffect(() => {
     checkToken();
+    const failSafe = setTimeout(() => {
+      if (isSplashVisible) {
+        setIsSplashVisible(false);
+        SplashScreen.hideAsync().catch(() => void 0);
+      }
+    }, 5000);
+    return () => clearTimeout(failSafe);
   }, []);
 
   return (
