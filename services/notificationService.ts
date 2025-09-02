@@ -1,7 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Toast from 'react-native-toast-message';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -20,9 +19,8 @@ class NotificationService {
   private readonly PENDING_AUDIO_NOTIFICATION_ID = '@vocalizeai_pending_audio_notification';
   private readonly INACTIVE_USER_NOTIFICATION_ID = '@vocalizeai_inactive_user_notification';
   
-  private readonly PENDING_AUDIO_CHECK_INTERVAL = 24 * 60 * 60;
-  private readonly INACTIVE_USER_CHECK_INTERVAL = 7 * 24 * 60 * 60;
-  
+  private readonly PENDING_AUDIO_CHECK_INTERVAL = 24 * 60 * 60; // 24 horas (1 vez por dia)
+  private readonly INACTIVE_USER_CHECK_INTERVAL = 7 * 24 * 60 * 60; // 168 horas (1 vez por semana)
 
   public static getInstance(): NotificationService {
     if (!NotificationService.instance) {
@@ -89,6 +87,11 @@ class NotificationService {
         await Notifications.cancelScheduledNotificationAsync(existingId);
       }
 
+      const hasPendingAudios = await this.checkPendingAudios();
+      if (!hasPendingAudios) {
+        return;
+      }
+
       const interval = this.PENDING_AUDIO_CHECK_INTERVAL;
       
       const notificationId = await Notifications.scheduleNotificationAsync({
@@ -106,12 +109,14 @@ class NotificationService {
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds: interval,
-          repeats: true,
+          repeats: false,
         },
       });
 
       await AsyncStorage.setItem(this.PENDING_AUDIO_NOTIFICATION_ID, notificationId);
+      this.scheduleRecurringCheck('pending_audio');
     } catch (error) {
+      console.warn('Erro ao agendar notificação de áudios pendentes:', error);
     }
   }
 
@@ -139,13 +144,66 @@ class NotificationService {
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds: interval,
-          repeats: true,
+          repeats: false,
         },
       });
 
       await AsyncStorage.setItem(this.INACTIVE_USER_NOTIFICATION_ID, notificationId);
-    } catch (error) {
       
+      this.scheduleRecurringCheck('inactive_user');
+    } catch (error) {
+      console.warn('Erro ao agendar notificação de usuário inativo:', error);
+    }
+  }
+
+  private async scheduleRecurringCheck(type: 'pending_audio' | 'inactive_user'): Promise<void> {
+    let intervals: number[];
+    
+    if (type === 'pending_audio') {
+      intervals = [];
+      for (let day = 1; day <= 30; day++) {
+        intervals.push(day * 24);
+      }
+    } else {
+      intervals = [];
+      for (let week = 1; week <= 24; week++) {
+        intervals.push(week * 168);
+      }
+    }
+    
+    for (const hours of intervals) {
+      try {
+        const content = type === 'pending_audio' 
+          ? {
+              title: 'VocalizeAI',
+              body: 'Você tem áudios gravados que ainda não foram enviados para a nossa base de dados. Que tal fazer o envio?',
+              data: { type: 'pending_audio' },
+            }
+          : {
+              title: 'VocalizeAI sente sua falta!',
+              body: 'O VocalizeAI sente sua falta! Sempre que puder, aproveite para registrar novas vocalizações.',
+              data: { type: 'inactive_user' },
+            };
+
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            ...content,
+            sound: true,
+            ...(Platform.OS === 'android' && {
+              icon: 'ic_white_v_notification',
+              categoryIdentifier: type === 'pending_audio' ? 'audio_reminder' : 'user_engagement',
+              priority: Notifications.AndroidNotificationPriority.HIGH,
+            }),
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+            seconds: hours * 60 * 60,
+            repeats: false,
+          },
+        });
+      } catch (error) {
+        console.warn(`Erro ao agendar notificação recorrente ${type} para ${hours}h:`, error);
+      }
     }
   }
 
@@ -166,6 +224,8 @@ class NotificationService {
 
     await this.recordAppOpen();
 
+    await this.cancelAllNotifications();
+
     const hasPendingAudios = await this.checkPendingAudios();
     if (hasPendingAudios) {
       await this.schedulePendingAudioNotification();
@@ -184,6 +244,47 @@ class NotificationService {
       if (existingId) {
         await Notifications.cancelScheduledNotificationAsync(existingId);
         await AsyncStorage.removeItem(this.PENDING_AUDIO_NOTIFICATION_ID);
+      }
+    }
+
+    await this.scheduleInactiveUserNotification();
+  }
+
+  async refreshNotificationsOnAppOpen(): Promise<void> {
+    try {
+      const scheduledNotifications = await this.listScheduledNotifications();
+      const hasPendingAudioNotif = scheduledNotifications.some(n => n.content.data?.type === 'pending_audio');
+      const hasInactiveUserNotif = scheduledNotifications.some(n => n.content.data?.type === 'inactive_user');
+
+      const hasPendingAudios = await this.checkPendingAudios();
+
+      if (hasPendingAudios && !hasPendingAudioNotif) {
+        await this.schedulePendingAudioNotification();
+      } else if (!hasPendingAudios && hasPendingAudioNotif) {
+        await this.cancelPendingAudioNotifications();
+      }
+
+      if (!hasInactiveUserNotif) {
+        await this.scheduleInactiveUserNotification();
+      }
+
+      await this.recordAppOpen();
+    } catch (error) {
+      console.warn('Erro ao atualizar notificações na abertura do app:', error);
+    }
+  }
+
+  private async cancelPendingAudioNotifications(): Promise<void> {
+    const existingId = await AsyncStorage.getItem(this.PENDING_AUDIO_NOTIFICATION_ID);
+    if (existingId) {
+      await Notifications.cancelScheduledNotificationAsync(existingId);
+      await AsyncStorage.removeItem(this.PENDING_AUDIO_NOTIFICATION_ID);
+    }
+
+    const scheduledNotifications = await this.listScheduledNotifications();
+    for (const notification of scheduledNotifications) {
+      if (notification.content.data?.type === 'pending_audio') {
+        await Notifications.cancelScheduledNotificationAsync(notification.identifier);
       }
     }
   }
