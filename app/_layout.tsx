@@ -44,29 +44,34 @@ export default function RootLayout() {
         await getParticipantesByUsuario(userId);
       }
       await getVocalizacoes();
-    } catch (error) {}
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: error instanceof Error ? error.message : "Erro",
+        text2: "Por favor, tente novamente mais tarde.",
+      });
+    }
   };
 
   const checkToken = async () => {
     try {
       await loadFonts();
-
       await checkAndClearOldCache();
-
       await notificationService.initialize();
 
       const authenticated = await isAuthenticated();
 
       if (authenticated) {
         router.replace("/(tabs)");
+        loadInitialData();
       } else {
         router.replace("/auth/login");
       }
     } catch (error) {
       Toast.show({
         type: "error",
-        text1: "Erro ao verificar autenticação",
-        text2: "Por favor, faça login novamente",
+        text1: error instanceof Error ? error.message : "Erro",
+        text2: "Redirecionando para login",
       });
       router.replace("/auth/login");
     } finally {
@@ -79,7 +84,6 @@ export default function RootLayout() {
 
   useEffect(() => {
     checkToken();
-    loadInitialData();
   }, []);
 
   return (

@@ -22,12 +22,45 @@ const decodeToken = (token: string): TokenPayload => {
 };
 
 /**
+ * Salva as credenciais do usuário para login automático
+ * @param email Email do usuário
+ * @param senha Senha do usuário
+ * @param rememberMe Se deve lembrar as credenciais
+ */
+const saveCredentials = async (email: string, senha: string, rememberMe: boolean = true): Promise<void> => {
+  if (rememberMe) {
+    await AsyncStorage.multiSet([
+      ["saved_email", email],
+      ["saved_password", senha]
+    ]);
+  }
+};
+
+/**
+ * Remove as credenciais salvas
+ */
+const clearSavedCredentials = async (): Promise<void> => {
+  await AsyncStorage.multiRemove(["saved_email", "saved_password"]);
+};
+
+/**
+ * Verifica se existem credenciais salvas
+ * @returns true se existem credenciais salvas
+ */
+const hasSavedCredentials = async (): Promise<boolean> => {
+  const savedEmail = await AsyncStorage.getItem("saved_email");
+  const savedPassword = await AsyncStorage.getItem("saved_password");
+  return !!(savedEmail && savedPassword);
+};
+
+/**
  * Efetua login do usuário
  * @param email Email do usuário
  * @param senha Senha do usuário
+ * @param rememberMe Se deve lembrar as credenciais para login automático
  * @returns Retorna uma string que indica o status do login: 'success', 'unverified' ou 'error'
  */
-const doLogin = async (email: string, senha: string): Promise<string> => {
+const doLogin = async (email: string, senha: string, rememberMe: boolean = true): Promise<string> => {
   try {
     const response = await api.post("/auth/login", { email, senha });
     const { access_token, refresh_token } = response.data;
@@ -36,6 +69,10 @@ const doLogin = async (email: string, senha: string): Promise<string> => {
       const payload = decodeToken(access_token);
       
       await saveTokens(access_token, refresh_token, payload.sub, payload.role);
+      
+      if (rememberMe) {
+        await saveCredentials(email, senha, true);
+      }
       
       const cacheCleared = await checkAndClearOldCache();
       if (cacheCleared) {
@@ -92,6 +129,26 @@ const doLogin = async (email: string, senha: string): Promise<string> => {
       text2: errorMessage,
     });
     return "error";
+  }
+};
+
+/**
+ * Tenta fazer login automático com credenciais salvas
+ * @returns true se o login automático foi bem-sucedido
+ */
+const tryAutoLogin = async (): Promise<boolean> => {
+  try {
+    const savedEmail = await AsyncStorage.getItem("saved_email");
+    const savedPassword = await AsyncStorage.getItem("saved_password");
+    
+    if (!savedEmail || !savedPassword) {
+      return false;
+    }
+
+    const result = await doLogin(savedEmail, savedPassword, false);
+    return result === "success";
+  } catch (error) {
+    return false;
   }
 };
 
@@ -237,8 +294,9 @@ const confirmRegistration = async (email: string, codigoConfirmacao: string): Pr
 
 /**
  * Efetua o logout do usuário
+ * @param clearCredentials Se deve limpar as credenciais salvas (padrão: false)
  */
-const doLogout = async (): Promise<void> => {
+const doLogout = async (clearCredentials: boolean = false): Promise<void> => {
   try {
     const accessToken = await AsyncStorage.getItem("access_token");
     const refreshToken = await AsyncStorage.getItem("refresh_token");
@@ -256,19 +314,30 @@ const doLogout = async (): Promise<void> => {
         console.warn("Erro no logout do servidor:", error);
       }
     }
+  } catch (error) {
+    console.warn("Erro ao obter tokens para logout do servidor:", error);
+  }
 
+  try {
     const allKeys = await AsyncStorage.getAllKeys();
-    const keysToRemove = allKeys.filter(key => key !== "recordings");
+    let keysToRemove = allKeys.filter(key => key !== "recordings");
+    
+    if (!clearCredentials) {
+      keysToRemove = keysToRemove.filter(key => !["saved_email", "saved_password"].includes(key));
+    }
     
     if (keysToRemove.length > 0) {
       await AsyncStorage.multiRemove(keysToRemove);
     }
-    
-    router.push("/auth/login");
   } catch (error) {
+    console.warn("Erro ao limpar AsyncStorage:", error);
     await clearTokens();
-    router.push("/auth/login");
+    if (clearCredentials) {
+      await clearSavedCredentials();
+    }
   }
+  
+  router.push("/auth/login");
 };
 
 /**
@@ -307,6 +376,12 @@ const resetPassword = async (email: string, codigoConfirmacao: string, novaSenha
       codigo_confirmacao: parseInt(codigoConfirmacao),
       nova_senha: novaSenha
     });
+    
+    const savedEmail = await AsyncStorage.getItem("saved_email");
+    if (savedEmail === email) {
+      await AsyncStorage.setItem("saved_password", novaSenha);
+    }
+    
     Toast.show({
       type: "success",
       text1: "Senha alterada",
@@ -332,14 +407,50 @@ const isAuthenticated = async (): Promise<boolean> => {
     const accessToken = await AsyncStorage.getItem("access_token");
     
     if (!accessToken) {
+      if (await hasSavedCredentials()) {
+        const autoLoginSuccess = await tryAutoLogin();
+        return autoLoginSuccess;
+      }
       return false;
     }
 
     const payload = decodeToken(accessToken);
     const now = Math.floor(Date.now() / 1000);
     
-    return payload.exp > now;
+    if (payload.exp <= now) {
+      const refreshToken = await AsyncStorage.getItem("refresh_token");
+      
+      if (refreshToken) {
+        try {
+          const response = await api.post('/auth/refresh', {
+            refresh_token: refreshToken
+          });
+          
+          const { access_token, refresh_token: new_refresh_token } = response.data;
+          
+          await AsyncStorage.multiSet([
+            ["access_token", access_token],
+            ["refresh_token", new_refresh_token]
+          ]);
+          
+          return true;
+        } catch (refreshError) {
+          if (await hasSavedCredentials()) {
+            return await tryAutoLogin();
+          }
+        }
+      } else if (await hasSavedCredentials()) {
+        return await tryAutoLogin();
+      }
+      
+      return false;
+    }
+    
+    return true;
   } catch (error) {
+    if (await hasSavedCredentials()) {
+      return await tryAutoLogin();
+    }
     return false;
   }
 };
@@ -352,5 +463,8 @@ export {
   requestPasswordReset, 
   resetPassword, 
   sendConfirmationCode,
-  isAuthenticated 
+  isAuthenticated,
+  tryAutoLogin,
+  hasSavedCredentials,
+  clearSavedCredentials
 };

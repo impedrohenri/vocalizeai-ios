@@ -6,16 +6,19 @@ import {
   confirmRegistration,
   doLogin,
   sendConfirmationCode,
+  hasSavedCredentials,
 } from "@/services/authService";
 import { validarEmail } from "@/services/usuarioService";
 import { MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Linking,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from "react-native";
@@ -28,6 +31,31 @@ export default function LoginScreen() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [codigoConfirmacao, setCodigoConfirmacao] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+
+  useEffect(() => {
+    loadSavedCredentials();
+  }, []);
+
+  const loadSavedCredentials = async () => {
+    try {
+      const hasCredentials = await hasSavedCredentials();
+      if (hasCredentials) {
+        const savedEmail = await AsyncStorage.getItem("saved_email");
+        const savedPassword = await AsyncStorage.getItem("saved_password");
+
+        if (savedEmail) setEmail(savedEmail);
+        if (savedPassword) setPassword(savedPassword);
+        setRememberMe(true);
+      }
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: error instanceof Error ? error.message : "Erro",
+        text2: "Por favor, tente novamente mais tarde.",
+      });
+    }
+  };
 
   const handleEmailChange = (text: string) => {
     setEmail(text);
@@ -60,7 +88,7 @@ export default function LoginScreen() {
     }
 
     try {
-      const loginStatus = await doLogin(email, password);
+      const loginStatus = await doLogin(email, password, rememberMe);
       if (loginStatus === "success") {
         router.replace("/(tabs)");
       } else if (loginStatus === "unverified") {
@@ -158,7 +186,6 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               leftIcon={<MaterialIcons name="lock" size={20} color="#666" />}
             />
-
             <ButtonCustom
               title="Esqueci minha senha"
               variant="link"
