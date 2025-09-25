@@ -274,7 +274,7 @@ const confirmRegistration = async (email: string, codigoConfirmacao: string): Pr
   try {
     await api.post('/auth/confirm-registration', { 
       email, 
-      codigo_confirmacao: parseInt(codigoConfirmacao) 
+      codigo_confirmacao: codigoConfirmacao
     });
     Toast.show({
       type: "success",
