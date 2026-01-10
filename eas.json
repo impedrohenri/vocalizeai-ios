@@ -1,0 +1,31 @@
+{
+  "build": {
+    "production": {
+      "android": {
+        "buildType": "apk",
+        "env": {
+          "EXPO_PUBLIC_API_URL": "http://143.110.225.152:8000/api",
+          "EXPO_PUBLIC_API_KEY": "vocalize-local-teste"
+        }
+      }
+    },
+    "development": {
+      "android": {
+        "buildType": "apk",
+        "env": {
+          "EXPO_PUBLIC_API_URL": "http://143.110.225.152:8000/api",
+          "EXPO_PUBLIC_API_KEY": "vocalize-local-teste"
+        }
+      }
+    },
+    "simulator": {
+      "ios": {
+        "simulator": true,
+        "env": {
+            "EXPO_PUBLIC_API_URL":"http://143.110.225.152:8000/api",
+            "EXPO_PUBLIC_API_KEY": "vocalize-local-teste"
+        }
+      }
+    }
+  }
+}
