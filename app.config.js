@@ -3,7 +3,7 @@ import 'dotenv/config';
 export default {
   expo: {
     name: "VocalizeAI - Teste",
-    slug: "vocalizeai",
+    slug: "vocalizeai-teste",
     version: "0.0.1",
     orientation: "portrait",
     icon: "./assets/images/splashscreen_logo.png",
@@ -149,8 +149,8 @@ export default {
       router: {
         origin: false
       },
-      eas: {
-        projectId: process.env.PROJECT_ID
+      "eas": {
+        "projectId": "5ac1e2c8-37ca-4f85-abd1-ff85fd3eb4db"
       },
       EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
       EXPO_PUBLIC_API_KEY: process.env.EXPO_PUBLIC_API_KEY
