@@ -4,8 +4,6 @@ import MaskedView from "@react-native-masked-view/masked-view";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Platform,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -63,7 +61,7 @@ export function Header() {
   );
 
   return (
-    <View style={styles.safeArea}>
+    <View>
       <View style={styles.container}>
         <View style={styles.titleContainer}>
           <MaskedView
@@ -107,10 +105,6 @@ export function Header() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-    backgroundColor: "#F5F5F5",
-  },
   container: {
     flexDirection: "row",
     paddingHorizontal: 16,

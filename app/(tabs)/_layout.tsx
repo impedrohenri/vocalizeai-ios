@@ -4,6 +4,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 function TabBarIcon(props: {
@@ -14,6 +15,7 @@ function TabBarIcon(props: {
 }
 export default function TabLayout() {
   const [role, setRole] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const fetchRole = async () => {
@@ -41,7 +43,7 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarStyle: { ...style.tabBar },
+          tabBarStyle: { ...style.tabBar, paddingBottom: insets.bottom, height: 60 + insets.bottom, },
           tabBarLabelStyle: { ...style.tabBarLabel },
           tabBarHideOnKeyboard: true,
         }}
@@ -137,7 +139,7 @@ const style = StyleSheet.create({
     justifyContent: "center",
     height: 64,
     padding: 8,
-    backgroundColor: "#FFE",
+    backgroundColor: "#FDFDFF",
     borderTopWidth: 1,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

@@ -12,6 +12,8 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import LinearGradient from "react-native-linear-gradient";
 import Toast from "react-native-toast-message";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -102,7 +104,8 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <View style={{ flex: 1 }}>
+    <SafeAreaProvider>
+      <StatusBar style="dark" />
       {isSplashVisible ? (
         <View style={styles.splashContainer}>
           <MaskedView
@@ -150,9 +153,11 @@ export default function RootLayout() {
           />
         </View>
       ) : null}
-      <Slot />
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F5F5" }} edges={["top"]}>
+        <Slot />
+      </SafeAreaView>
       <Toast visibilityTime={3000} position="top" />
-    </View>
+    </SafeAreaProvider>
   );
 }
 
