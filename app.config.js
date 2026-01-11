@@ -4,13 +4,14 @@ export default {
   expo: {
     name: "VocalizeAI - Teste",
     slug: "vocalizeai-teste",
-    version: "0.0.1",
+    version: "0.0.2",
     orientation: "portrait",
     icon: "./assets/images/splashscreen_logo.png",
     scheme: "myapp",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
     jsEngine: "hermes",
+    devClient: true,
 
     ios: {
       bundleIdentifier: "com.teste.vocalizeai",
@@ -53,10 +54,6 @@ export default {
         notificationColor: "#FF0000"
       },
       enableProguardInReleaseBuilds: true,
-      buildToolsVersion: "33.0.0",
-      minSdkVersion: 26,
-      compileSdkVersion: 34,
-      targetSdkVersion: 34
     },
 
     web: {
@@ -80,8 +77,8 @@ export default {
         "expo-build-properties",
         {
           android: {
-            compileSdkVersion: 34,
-            targetSdkVersion: 34,
+            compileSdkVersion: 35,
+            targetSdkVersion: 35,
             minSdkVersion: 26,
             buildToolsVersion: "33.0.0",
             extraProguardRules: `-keep class com.facebook.hermes.unicode.** { *; }
