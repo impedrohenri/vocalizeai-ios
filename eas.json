@@ -10,11 +10,22 @@
       }
     },
     "development": {
+      "developmentClient": true,
       "android": {
         "buildType": "apk",
         "env": {
-          "EXPO_PUBLIC_API_URL": "https://vocalizeai.app.br/dev-api",
-          "EXPO_PUBLIC_API_KEY": "b5694358-82bd-4bf0-81ab-32df891b5f86"
+          "EXPO_PUBLIC_API_URL": "http://143.110.225.152:8000/api",
+          "EXPO_PUBLIC_API_KEY": "vocalize-local-teste"
+        }
+      }
+    },
+    "simulator": {
+      "developmentClient": true,
+      "ios": {
+        "simulator": true,
+        "env": {
+            "EXPO_PUBLIC_API_URL":"http://143.110.225.152:8000/api",
+            "EXPO_PUBLIC_API_KEY": "vocalize-local-teste"
         }
       }
     }
