@@ -8,3 +8,10 @@ export interface AudioItem {
   updated_at?: string;
   segments?: string[];
 }
+
+export interface AudioStatus {
+  isRecording: boolean;
+  isPaused: boolean;
+  durationMillis: number;
+  metering: number;
+}
