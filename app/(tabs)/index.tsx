@@ -39,6 +39,8 @@ export default function HomeScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [record, setRecord] = useState<any>({});
 
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
+
   useEffect(() => {
     try {
       Audio
@@ -79,20 +81,16 @@ export default function HomeScreen() {
       setIsPaused(true)
       setIsRecording(status.isRecording);
     }
-
-    console.log("status depois de pausar", status);
   };
 
   const unpauseRecording = async () => {
     if (!recording) return;
 
     let status = await recording.getStatusAsync();
-    console.log("status antes de continuar", status);
 
     if (isPaused) {
       status = await recording.startAsync();
       setIsRecording(status.isRecording);
-      console.log("status depois de continuar", status);
     }
 
     setIsPaused(false);
@@ -102,7 +100,7 @@ export default function HomeScreen() {
 
     if (recording !== null) {
       const { durationMillis } = await recording.stopAndUnloadAsync();
-      const { sound, status } = await recording.createNewLoadedSoundAsync();
+      const { sound } = await recording.createNewLoadedSoundAsync();
 
       setRecord({
         sound: sound,
@@ -116,7 +114,7 @@ export default function HomeScreen() {
       Toast.show({
         type: "success",
         text1: "Gravação salva localmente!",
-        text2: "Você pode encontrá-la na lista de gravações.",
+        text2: "Você pode encontrá-la na lista de áudios.",
       });
     }
 
@@ -137,11 +135,35 @@ export default function HomeScreen() {
     setIsLoading(false);
   }
 
+  const handleDiscard = async () => {
+    if (recording) {
+      await recording.stopAndUnloadAsync();
+      const status = await recording.getStatusAsync();
+      setIsRecording(status.isRecording);
+      setIsPaused(false);
+      setRecording(null);
+    }
+    setShowDiscardModal(false);
+  };
 
   return (
     <View style={styles.container}>
 
       <View style={styles.controlContainer}>
+        {(isPaused || (recording && !isRecording)) && (
+          <Pressable
+            onPress={() => setShowDiscardModal(true)}
+            style={({ pressed }) => [
+              styles.controlButton,
+              styles.discardButton,
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <MaterialIcons name="delete-outline" size={32} color="white" />
+            <Text style={styles.buttonText}>Descartar</Text>
+          </Pressable>
+        )}
+
         <Pressable
           style={({ pressed }) => [styles.controlButton, styles.recordButton, pressed && styles.buttonPressed]}
           onPress={handleRecordPress}
@@ -193,6 +215,12 @@ export default function HomeScreen() {
       </View>
       {Object.keys(record).length > 0 && <RecordPlayButton record={record} />}
 
+      <ConfirmationModal
+        visible={showDiscardModal}
+        onCancel={() => setShowDiscardModal(false)}
+        onConfirm={handleDiscard}
+        message="Tem certeza que deseja descartar a gravação?"
+      />
     </View>
   );
 }
