@@ -29,6 +29,7 @@ import Toast from "react-native-toast-message";
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import Button from "@/components/Button";
 import RecordPlayButton from "@/components/RecordPlayButton";
+import Timer from "@/components/Timer";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -38,6 +39,8 @@ export default function HomeScreen() {
 
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [record, setRecord] = useState<any>({});
+  const [recordingTime, setRecordingTime] = useState(0);
+
 
   const [showDiscardModal, setShowDiscardModal] = useState(false);
 
@@ -62,6 +65,21 @@ export default function HomeScreen() {
     } catch (err) { }
   }, []);
 
+  useEffect(() => {
+    if (!recording) return;
+
+        recording.setOnRecordingStatusUpdate((status) => {
+            if (status.isRecording) {
+                setRecordingTime(Math.floor(status.durationMillis / 1000));
+            }
+        });
+
+        recording.setProgressUpdateInterval(100);
+
+        return () => {
+            recording.setOnRecordingStatusUpdate(null);
+        };
+  }, [recording])
 
   const startRecording = async () => {
     try {
@@ -118,11 +136,12 @@ export default function HomeScreen() {
       });
     }
 
+    setRecordingTime(0);
     setRecording(null);
   };
 
   const handleRecordPress = async () => {
-    setIsLoading(false);
+    setIsLoading(true);
 
     if (!!recording && !isPaused) {
       pauseRecording();
@@ -142,12 +161,15 @@ export default function HomeScreen() {
       setIsRecording(status.isRecording);
       setIsPaused(false);
       setRecording(null);
+      setRecordingTime(0);
     }
     setShowDiscardModal(false);
   };
 
   return (
     <View style={styles.container}>
+
+      <Timer isRecording={isRecording} isPaused={isPaused} recordingTime={recordingTime} />
 
       <View style={styles.controlContainer}>
         {(isPaused || (recording && !isRecording)) && (
@@ -165,7 +187,11 @@ export default function HomeScreen() {
         )}
 
         <Pressable
-          style={({ pressed }) => [styles.controlButton, styles.recordButton, pressed && styles.buttonPressed]}
+          style={({ pressed }) => [
+            styles.controlButton, 
+            styles.recordButton,
+            isRecording && styles.recordingButton,
+            pressed && styles.buttonPressed]}
           onPress={handleRecordPress}
           disabled={isLoading}
         >
