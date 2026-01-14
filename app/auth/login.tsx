@@ -22,7 +22,7 @@ import {
   Text,
   View,
 } from "react-native";
-import LinearGradient from "react-native-linear-gradient";
+import {LinearGradient} from "expo-linear-gradient";
 import Toast from "react-native-toast-message";
 
 export default function LoginScreen() {

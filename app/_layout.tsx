@@ -10,7 +10,7 @@ import { Slot, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import LinearGradient from "react-native-linear-gradient";
+import {LinearGradient} from "expo-linear-gradient";
 import Toast from "react-native-toast-message";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";

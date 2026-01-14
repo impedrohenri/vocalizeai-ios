@@ -59,10 +59,15 @@ export default function HomeScreen() {
               playThroughEarpieceAndroid: false,
               staysActiveInBackground: true,
             });
+
+            console.log(granted)
+
           }
         })
 
-    } catch (err) { }
+    } catch (err) {
+      console.log(err)
+    }
   }, []);
 
   useEffect(() => {
@@ -86,7 +91,9 @@ export default function HomeScreen() {
       const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       setRecording(recording);
       setIsRecording(true);
-    } catch (err) { }
+    } catch (err) {
+      console.log(err)
+    }
   };
 
   const pauseRecording = async () => {
@@ -143,15 +150,19 @@ export default function HomeScreen() {
   const handleRecordPress = async () => {
     setIsLoading(true);
 
-    if (!!recording && !isPaused) {
+    try {
+      if (!!recording && !isPaused) {
       pauseRecording();
     } else if (!!recording && isPaused) {
       unpauseRecording();
     } else if (!recording) {
       startRecording();
     }
+    } finally {
 
-    setIsLoading(false);
+      setIsLoading(false);
+    }
+
   }
 
   const handleDiscard = async () => {

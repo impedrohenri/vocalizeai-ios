@@ -4,7 +4,12 @@ import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
-const { EXPO_PUBLIC_API_URL, EXPO_PUBLIC_API_KEY } = Constants.expoConfig?.extra || process.env;
+// const { EXPO_PUBLIC_API_URL, EXPO_PUBLIC_API_KEY } = Constants.expoConfig?.extra || process.env;
+
+const { EXPO_PUBLIC_API_URL, EXPO_PUBLIC_API_KEY } = {
+  EXPO_PUBLIC_API_URL: 'http://x:8000/api',
+  EXPO_PUBLIC_API_KEY: 'x',
+};
 
 interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
