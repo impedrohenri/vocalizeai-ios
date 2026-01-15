@@ -1,47 +1,29 @@
-import ButtonCustom from "@/components/Button";
 import ConfirmationModal from "@/components/ConfirmationModal";
-import ParticipanteSelector from "@/components/ParticipanteSelect";
-import VocalizationSelect from "@/components/VocalizationSelect";
-import Input from "@/components/Inputs/Input";
-
-import { saveAudioLocally } from "@/services/audioService";
-import {
-  checkParticipantExists,
-  getParticipantesByUsuario,
-} from "@/services/participanteService";
-import { getVocalizacoes } from "@/services/vocalizacoesService";
-import { Vocalizacao } from "@/types/Vocalizacao";
 import { MaterialIcons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as FileSystem from "expo-file-system";
 import { useRouter } from "expo-router";
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
-import Button from "@/components/Button";
-import RecordPlayButton from "@/components/RecordPlayButton";
 import Timer from "@/components/Timer";
+import SaveAudioModal from "@/components/SaveAudioModal";
 
 export default function HomeScreen() {
-  const router = useRouter();
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasPermission, setHasPermission] = useState(false);
 
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [record, setRecord] = useState<any>({});
   const [recordingTime, setRecordingTime] = useState(0);
 
-
+  const [showSaveAudioModal, setShowSaveAudioModal] = useState(false);
   const [showDiscardModal, setShowDiscardModal] = useState(false);
 
   useEffect(() => {
@@ -49,7 +31,7 @@ export default function HomeScreen() {
       Audio
         .requestPermissionsAsync()
         .then((granted) => {
-          if (granted) {
+          if (granted.granted) {
             Audio.setAudioModeAsync({
               allowsRecordingIOS: true,
               playsInSilentModeIOS: true,
@@ -59,31 +41,32 @@ export default function HomeScreen() {
               playThroughEarpieceAndroid: false,
               staysActiveInBackground: true,
             });
-
-            console.log(granted)
-
+            setHasPermission(granted.granted);
           }
         })
-
     } catch (err) {
-      console.log(err)
+      Toast.show({
+        type: "error",
+        text1: "Erro ao configurar áudio",
+        text2: err instanceof Error ? JSON.stringify(err.message) : "Não foi possível obter a permissão para gravação.",
+      });
     }
+
+
   }, []);
 
   useEffect(() => {
     if (!recording) return;
+    recording.setOnRecordingStatusUpdate((status) => {
+      if (status.isRecording) {
+        setRecordingTime(Math.floor(status.durationMillis / 1000));
+      }
+    });
+    recording.setProgressUpdateInterval(100);
 
-        recording.setOnRecordingStatusUpdate((status) => {
-            if (status.isRecording) {
-                setRecordingTime(Math.floor(status.durationMillis / 1000));
-            }
-        });
-
-        recording.setProgressUpdateInterval(100);
-
-        return () => {
-            recording.setOnRecordingStatusUpdate(null);
-        };
+    return () => {
+      recording.setOnRecordingStatusUpdate(null);
+    };
   }, [recording])
 
   const startRecording = async () => {
@@ -92,7 +75,11 @@ export default function HomeScreen() {
       setRecording(recording);
       setIsRecording(true);
     } catch (err) {
-      console.log(err)
+      Toast.show({
+        type: "error",
+        text1: "Erro ao iniciar gravação",
+        text2: err instanceof Error ? JSON.stringify(err.message) : "Por favor, tente novamente mais tarde.",
+      });
     }
   };
 
@@ -122,29 +109,7 @@ export default function HomeScreen() {
   }
 
   const saveRecordingLocally = async () => {
-
-    if (recording !== null) {
-      const { durationMillis } = await recording.stopAndUnloadAsync();
-      const { sound } = await recording.createNewLoadedSoundAsync();
-
-      setRecord({
-        sound: sound,
-        duration: durationMillis,
-        file: recording.getURI()
-      });
-
-      setIsRecording(false);
-      setIsPaused(false);
-
-      Toast.show({
-        type: "success",
-        text1: "Gravação salva localmente!",
-        text2: "Você pode encontrá-la na lista de áudios.",
-      });
-    }
-
-    setRecordingTime(0);
-    setRecording(null);
+    setShowSaveAudioModal(true);
   };
 
   const handleRecordPress = async () => {
@@ -152,14 +117,13 @@ export default function HomeScreen() {
 
     try {
       if (!!recording && !isPaused) {
-      pauseRecording();
-    } else if (!!recording && isPaused) {
-      unpauseRecording();
-    } else if (!recording) {
-      startRecording();
-    }
+        pauseRecording();
+      } else if (!!recording && isPaused) {
+        unpauseRecording();
+      } else if (!recording) {
+        startRecording();
+      }
     } finally {
-
       setIsLoading(false);
     }
 
@@ -199,7 +163,7 @@ export default function HomeScreen() {
 
         <Pressable
           style={({ pressed }) => [
-            styles.controlButton, 
+            styles.controlButton,
             styles.recordButton,
             isRecording && styles.recordingButton,
             pressed && styles.buttonPressed]}
@@ -250,7 +214,19 @@ export default function HomeScreen() {
           </Pressable>
         )}
       </View>
-      {Object.keys(record).length > 0 && <RecordPlayButton record={record} />}
+
+      <SaveAudioModal
+        recording={recording}
+        setRecording={setRecording}
+        showSaveAudioModal={showSaveAudioModal}
+        setShowSaveAudioModal={setShowSaveAudioModal}
+        isRecording={isRecording}
+        setIsRecording={setIsRecording}
+        isPaused={isPaused}
+        setIsPaused={setIsPaused}
+        recordingTime={recordingTime}
+        setRecordingTime={setRecordingTime}
+      />
 
       <ConfirmationModal
         visible={showDiscardModal}
