@@ -1,112 +1,89 @@
-import * as FileSystem from 'expo-file-system';
-import { NativeModules, Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
 
-const { FileOperations } = NativeModules;
+
+const AUDIO_DIR = FileSystem.documentDirectory + 'audio/';
 
 const FileOperationsModule = {
-  async deleteFile(filePath) {
-    if (Platform.OS === 'android') {
-      try {
-        const result = await FileOperations.deleteFile(filePath);
-        return result;
-      } catch (error) {
-        console.error('Error in native deleteFile:', error);
-        try {
-          await FileSystem.deleteAsync(filePath, { idempotent: true });
-          return true;
-        } catch (fsError) {
-          console.error('Fallback deletion also failed:', fsError);
-          return false;
-        }
-      }
-    } else {
-      try {
-        await FileSystem.deleteAsync(filePath, { idempotent: true });
-        return true;
-      } catch (error) {
-        console.error('Error deleting file with FileSystem:', error);
-        return false;
-      }
-    }
-  },
-
+  /**
+   * Retorna o diretório de áudio, criando-o se não existir.
+   */
   async getAudioDirectory() {
-    if (Platform.OS === 'android') {
-      try {
-        const dirPath = await FileOperations.getAppAudioDirectory();
-        return dirPath;
-      } catch (error) {
-        console.error('Error getting audio directory:', error);
-        return FileSystem.documentDirectory + 'audio/';
-      }
-    } else {
-      const dirPath = FileSystem.documentDirectory + 'audio/';
-
-      const dirInfo = await FileSystem.getInfoAsync(dirPath);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(dirPath, { intermediates: true });
-      }
-
-      return dirPath;
-    }
-  },
-
-  async cleanAudioDirectory() {
-    if (Platform.OS === 'android') {
-      try {
-        return await FileOperations.cleanAudioDirectory();
-      } catch (error) {
-        console.error('Error cleaning audio directory:', error);
-        return 0;
-      }
-    } else {
-      try {
-        const dirPath = FileSystem.documentDirectory + 'audio/';
-        const dirInfo = await FileSystem.getInfoAsync(dirPath);
-
-        if (dirInfo.exists && dirInfo.isDirectory) {
-          const files = await FileSystem.readDirectoryAsync(dirPath);
-          let deletedCount = 0;
-
-          for (const file of files) {
-            try {
-              await FileSystem.deleteAsync(dirPath + file, { idempotent: true });
-              deletedCount++;
-            } catch (error) {
-              console.error(`Failed to delete ${file}:`, error);
-            }
-          }
-
-          return deletedCount;
-        }
-        return 0;
-      } catch (error) {
-        console.error('Error cleaning audio directory with FileSystem:', error);
-        return 0;
-      }
-    }
-  },
-
-  async moveFile(sourcePath, destPath) {
     try {
-      await FileSystem.copyAsync({
-        from: sourcePath,
-        to: destPath
-      });
-
-      try {
-        if (Platform.OS === 'android' && FileOperations.deleteFile) {
-          await FileOperations.deleteFile(sourcePath);
-        } else {
-          await FileSystem.deleteAsync(sourcePath, { idempotent: true });
-        }
-      } catch (deleteError) {
-        console.error('Failed to delete source file after copy:', deleteError);
+      const dirInfo = await FileSystem.getInfoAsync(AUDIO_DIR);
+      
+      if (!dirInfo.exists) {
+        console.log("Diretório de áudio não existe, criando...", AUDIO_DIR);
+        await FileSystem.makeDirectoryAsync(AUDIO_DIR, { intermediates: true });
       }
+      
+      return AUDIO_DIR;
+    } catch (error) {
+      console.error('Erro ao obter/criar diretório de áudio:', error);
+      return AUDIO_DIR; 
+    }
+  },
 
+  /**
+   * Deleta um arquivo específico.
+   */
+  async deleteFile(filePath) {
+    try {
+      await FileSystem.deleteAsync(filePath, { idempotent: true });
       return true;
     } catch (error) {
-      console.error('Error moving file:', error);
+      console.error('Erro ao deletar arquivo:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Limpa todo o conteúdo da pasta de áudio.
+   */
+  async cleanAudioDirectory() {
+    try {
+      const dirInfo = await FileSystem.getInfoAsync(AUDIO_DIR);
+
+      if (dirInfo.exists && dirInfo.isDirectory) {
+        const files = await FileSystem.readDirectoryAsync(AUDIO_DIR);
+        let deletedCount = 0;
+
+        for (const file of files) {
+          try {
+            const filePath = AUDIO_DIR + file;
+            await FileSystem.deleteAsync(filePath, { idempotent: true });
+            deletedCount++;
+          } catch (error) {
+            console.error(`Falha ao deletar ${file}:`, error);
+          }
+        }
+        return deletedCount;
+      }
+      return 0;
+    } catch (error) {
+      console.error('Erro ao limpar diretório de áudio:', error);
+      return 0;
+    }
+  },
+
+  /**
+   * Move um arquivo de um lugar para outro.
+   */
+  async moveFile(sourcePath, destPath) {
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(sourcePath);
+      
+      if (fileInfo.exists) {
+        await FileSystem.moveAsync({
+          from: sourcePath,
+          to: destPath
+        });
+        return true;
+      } else {
+        console.warn('Arquivo de origem não existe para mover:', sourcePath);
+        return false;
+      }
+    } catch (error) {
+      console.error('Erro ao mover arquivo:', error);
       return false;
     }
   }
