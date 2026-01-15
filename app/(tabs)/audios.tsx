@@ -427,87 +427,12 @@ export default function AudiosScreen() {
         await stopAudioPlayback();
       }
 
-      const uriTimestamp = recording.uri.match(/recording_(\d+)/);
-      const timestampInFilename = uriTimestamp ? uriTimestamp[1] : null;
-
       let deleted = false;
 
       try {
-        const audioDir = await FileOperations.getAudioDirectory();
-
-        if (Platform.OS === "android") {
-          try {
-            let matchingFile = null;
-
-            if (timestampInFilename) {
-              const pattern = new RegExp(
-                `recording_${timestampInFilename.substring(0, 8)}`
-              );
-
-              const dirInfo = await FileSystem.getInfoAsync(audioDir);
-
-              if (dirInfo.exists && dirInfo.isDirectory) {
-                const files = await FileSystem.readDirectoryAsync(audioDir);
-
-                for (const file of files) {
-                  if (pattern.test(file)) {
-                    matchingFile = file;
-                    break;
-                  }
-                }
-              }
-            }
-
-            if (matchingFile) {
-              const filePath = `${audioDir}/${matchingFile}`;
-
-              try {
-                deleted = await FileOperations.deleteFile(filePath);
-
-                if (!deleted) {
-                  await FileSystem.deleteAsync(filePath, { idempotent: true });
-                  deleted = true;
-                }
-              } catch (fileError) {
-                Toast.show({
-                  text1:
-                    fileError instanceof Error ? fileError.message : "Erro",
-                  text2: "Erro ao excluir arquivo específico",
-                  type: "error",
-                });
-              }
-            } else {
-              Toast.show({
-                text1: "Erro",
-                text2: "Não foi possível encontrar o arquivo de áudio",
-                type: "error",
-              });
-            }
-          } catch (error) {
-            Toast.show({
-              text1: error instanceof Error ? error.message : "Erro",
-              text2: "Erro ao acessar o diretório de áudio",
-              type: "error",
-            });
-          }
-        } else {
-          try {
-            await FileSystem.deleteAsync(recording.uri, { idempotent: true });
-            deleted = true;
-          } catch (error) {
-            Toast.show({
-              text1: error instanceof Error ? error.message : "Erro",
-              text2: "Erro ao excluir o arquivo de áudio",
-              type: "error",
-            });
-          }
-        }
+        deleted = await FileOperations.deleteFile(recording.uri);
       } catch (error) {
-        Toast.show({
-          text1: error instanceof Error ? error.message : "Erro",
-          text2: "Erro ao acessar o diretório de áudio",
-          type: "error",
-        });
+         console.error(error);
       }
 
       const updated = recordings.filter(
