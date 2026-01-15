@@ -5,6 +5,7 @@ import {
   default as ParticipanteSelector,
 } from "@/components/ParticipanteSelect";
 import VocalizationSelect from "@/components/VocalizationSelect";
+import { RecordingContext } from "@/contexts/RecordingContext";
 import { uploadAudioFile } from "@/services/audioService";
 import { getParticipantesByUsuario } from "@/services/participanteService";
 import { getVocalizacoes } from "@/services/vocalizacoesService";
@@ -18,12 +19,11 @@ import NetInfo from "@react-native-community/netinfo";
 import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system/legacy";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -73,6 +73,8 @@ export default function AudiosScreen() {
     text: string;
   }>({ type: "none", text: "" });
   const [isConnected, setIsConnected] = useState(true);
+
+  const {isRecording} = useContext(RecordingContext);
 
   // Essas funções controlam a exibição dos modais para o iOS 
   const handleOpenDeleteModal = () => {
@@ -302,6 +304,14 @@ export default function AudiosScreen() {
 
   async function handlePlayAudio(uri: string) {
     try {
+      if (isRecording){
+        throw new Error("O microfone está sendo usado");
+      }
+
+      Audio.setAudioModeAsync({
+        allowsRecordingIOS: false
+      });
+
       if (soundRef.current) {
         await soundRef.current.stopAsync();
         await soundRef.current.unloadAsync();
@@ -369,9 +379,17 @@ export default function AudiosScreen() {
 
         await soundObject.playAsync();
 
+        soundObject.setOnPlaybackStatusUpdate(async (status) => {
+          if (status.isLoaded && status.didJustFinish){
+            await Audio.setAudioModeAsync({ allowsRecordingIOS: true })
+          }     
+        });
+
         soundRef.current = soundObject;
         setPlayingUri(uri);
       } catch (error) {
+        await Audio.setAudioModeAsync({ allowsRecordingIOS: true })
+
         Toast.show({
           text1: error instanceof Error ? error.message : "Erro",
           text2: "Erro ao carregar áudio",
@@ -388,10 +406,10 @@ export default function AudiosScreen() {
           );
         }
       }
-    } catch (error) {
+    } catch (error: Error | any) {
       setPlayingUri(null);
       Toast.show({
-        text1: error instanceof Error ? error.message : "Erro",
+        text1: error instanceof Error ? JSON.stringify(error.message) : "Erro",
         text2: "Erro ao reproduzir áudio",
         type: "error",
       });

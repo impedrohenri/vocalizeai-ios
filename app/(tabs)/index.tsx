@@ -1,7 +1,6 @@
 import ConfirmationModal from "@/components/ConfirmationModal";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -13,6 +12,7 @@ import Toast from "react-native-toast-message";
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import Timer from "@/components/Timer";
 import SaveAudioModal from "@/components/SaveAudioModal";
+import { RecordingContext } from "@/contexts/RecordingContext";
 
 export default function HomeScreen() {
   const [isRecording, setIsRecording] = useState(false);
@@ -25,6 +25,8 @@ export default function HomeScreen() {
 
   const [showSaveAudioModal, setShowSaveAudioModal] = useState(false);
   const [showDiscardModal, setShowDiscardModal] = useState(false);
+
+  const {setIsRecording: setContextIsRecording} = useContext(RecordingContext);
 
   useEffect(() => {
     try {
@@ -70,10 +72,15 @@ export default function HomeScreen() {
   }, [recording])
 
   const startRecording = async () => {
+    Audio.setAudioModeAsync({
+      allowsRecordingIOS: true
+    })
+
     try {
       const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       setRecording(recording);
       setIsRecording(true);
+      setContextIsRecording(true)
     } catch (err) {
       Toast.show({
         type: "error",
@@ -92,6 +99,7 @@ export default function HomeScreen() {
       status = await recording.pauseAsync();
       setIsPaused(true)
       setIsRecording(status.isRecording);
+      setContextIsRecording(status.isRecording)
     }
   };
 
@@ -103,6 +111,7 @@ export default function HomeScreen() {
     if (isPaused) {
       status = await recording.startAsync();
       setIsRecording(status.isRecording);
+      setContextIsRecording(status.isRecording)
     }
 
     setIsPaused(false);
@@ -134,6 +143,7 @@ export default function HomeScreen() {
       await recording.stopAndUnloadAsync();
       const status = await recording.getStatusAsync();
       setIsRecording(status.isRecording);
+      setContextIsRecording(status.isRecording)
       setIsPaused(false);
       setRecording(null);
       setRecordingTime(0);

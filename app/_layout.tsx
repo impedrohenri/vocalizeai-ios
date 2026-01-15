@@ -14,6 +14,7 @@ import {LinearGradient} from "expo-linear-gradient";
 import Toast from "react-native-toast-message";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { RecordingContextProvider } from "@/contexts/RecordingContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -154,7 +155,9 @@ export default function RootLayout() {
         </View>
       ) : null}
       <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F5F5" }} edges={["top"]}>
-        <Slot />
+        <RecordingContextProvider>
+          <Slot />
+        </RecordingContextProvider>
       </SafeAreaView>
       <Toast visibilityTime={3000} position="top" />
     </SafeAreaProvider>
