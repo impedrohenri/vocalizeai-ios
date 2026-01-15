@@ -16,7 +16,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { Audio } from "expo-av";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -73,6 +73,28 @@ export default function AudiosScreen() {
     text: string;
   }>({ type: "none", text: "" });
   const [isConnected, setIsConnected] = useState(true);
+
+  // Essas funções controlam a exibição dos modais para o iOS 
+  const handleOpenDeleteModal = () => {
+    setShowOptionsModal(false);
+    setShowConfirmDeleteModal(true);
+  };
+
+  const handleCancelDelete = () => {
+    setShowConfirmDeleteModal(false);
+    setShowOptionsModal(true);
+  };
+
+  const handleOpenUpdateModal = () => {
+    setShowOptionsModal(false);
+    setShowUpdateConfirmModal(true);
+  };
+
+  const handleCancelUpdate = () => {
+    setShowUpdateConfirmModal(false);
+    setShowOptionsModal(true);
+  };
+
 
   const showModalMessage = (
     type: "success" | "error" | "info",
@@ -494,7 +516,7 @@ export default function AudiosScreen() {
 
       setRecordings(updated);
       await AsyncStorage.setItem("recordings", JSON.stringify(updated));
-      setShowOptionsModal(false);
+      
       setShowConfirmDeleteModal(false);
       setSelectedRecording(null);
 
@@ -551,7 +573,7 @@ export default function AudiosScreen() {
       });
 
       setShowUpdateConfirmModal(false);
-      setShowOptionsModal(false);
+  
     } catch (error) {
       Toast.show({
         text1: error instanceof Error ? error.message : "Erro",
@@ -1003,14 +1025,14 @@ export default function AudiosScreen() {
 
       <ConfirmationModal
         visible={showUpdateConfirmModal}
-        onCancel={() => setShowUpdateConfirmModal(false)}
+        onCancel={handleCancelUpdate}
         onConfirm={handleUpdateVocalizationId}
         message="Confirma a atualização dos dados do áudio?"
       />
 
       <ConfirmationModal
         visible={showConfirmDeleteModal}
-        onCancel={() => setShowConfirmDeleteModal(false)}
+        onCancel={handleCancelDelete}
         onConfirm={() =>
           selectedRecording && handleDeleteAudio(selectedRecording)
         }
@@ -1195,7 +1217,7 @@ export default function AudiosScreen() {
             <View style={styles.modalActions}>
               <ButtonCustom
                 title="Atualizar Dados da Gravação"
-                onPress={() => setShowUpdateConfirmModal(true)}
+                onPress={handleOpenUpdateModal}
                 color="#2196F3"
                 style={styles.actionButton}
                 icon={<MaterialIcons name="edit" size={20} color="#FFF" />}
@@ -1225,7 +1247,7 @@ export default function AudiosScreen() {
 
               <ButtonCustom
                 title="Excluir Áudio"
-                onPress={() => setShowConfirmDeleteModal(true)}
+                onPress={handleOpenDeleteModal}
                 color="#F44336"
                 style={styles.actionButton}
                 icon={<MaterialIcons name="delete" size={20} color="#FFF" />}
