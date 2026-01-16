@@ -17,10 +17,14 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
@@ -324,52 +328,59 @@ export default function VocalizacoesScreen() {
         animationType="slide"
         onRequestClose={() => setShowModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {selectedVocalizacao
-                  ? "Editar Rótulo de Vocalização"
-                  : "Adicionar Rótulo de Vocalização"}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowModal(false)}
-                style={styles.modalClose}
-              >
-                <MaterialIcons name="close" size={24} color="#666" />
-              </TouchableOpacity>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>
+                    {selectedVocalizacao
+                      ? "Editar Rótulo de Vocalização"
+                      : "Adicionar Rótulo de Vocalização"}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setShowModal(false)}
+                    style={styles.modalClose}
+                  >
+                    <MaterialIcons name="close" size={24} color="#666" />
+                  </TouchableOpacity>
+                </View>
+
+                <Input
+                  label="Rótulo"
+                  maxLength={50}
+                  showCharacterCount={true}
+                  value={nome}
+                  onChangeText={setNome}
+                  placeholder="Digite o rótulo da vocalização"
+                  editable={!isLoading}
+                />
+
+                <Input
+                  label="Descrição"
+                  value={descricao}
+                  onChangeText={setDescricao}
+                  multiline
+                  style={styles.descriptionInput}
+                  placeholder="Digite a descrição do rótulo da vocalização"
+                  editable={!isLoading}
+                />
+
+                <View style={styles.modalActions}>
+                  <ButtonCustom
+                    title="Salvar"
+                    onPress={handleSave}
+                    icon={<MaterialIcons name="save" size={20} color="#FFF" />}
+                    disabled={isLoading}
+                  />
+                </View>
+              </View>
             </View>
-
-            <Input
-              label="Rótulo"
-              maxLength={50}
-              showCharacterCount={true}
-              value={nome}
-              onChangeText={setNome}
-              placeholder="Digite o rótulo da vocalização"
-              editable={!isLoading}
-            />
-
-            <Input
-              label="Descrição"
-              value={descricao}
-              onChangeText={setDescricao}
-              multiline
-              style={styles.descriptionInput}
-              placeholder="Digite a descrição do rótulo da vocalização"
-              editable={!isLoading}
-            />
-
-            <View style={styles.modalActions}>
-              <ButtonCustom
-                title="Salvar"
-                onPress={handleSave}
-                icon={<MaterialIcons name="save" size={20} color="#FFF" />}
-                disabled={isLoading}
-              />
-            </View>
-          </View>
-        </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
 
       <ConfirmationModal
