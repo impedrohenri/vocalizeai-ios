@@ -26,12 +26,14 @@ export const uploadAudioFile = async (
       type: "audio/wav",
     } as any);
     
-    formData.append("participante_id", participanteId.toString());
-    formData.append("vocalizacao_id", vocalizacaoId.toString());
 
     const response = await api.post("/audios", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
+      },
+      params: {
+        id_vocalizacao: vocalizacaoId,
+        id_participante: participanteId,
       },
     });
 
