@@ -1,32 +1,50 @@
 {
+  "cli": {
+    "version": ">= 16.28.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://vocalizeai.app.br/api",
+        "EXPO_PUBLIC_API_KEY": "b5694358-82bd-4bf0-81ab-32df891b5f86",
+        "EXPO_PUBLIC_PROJECT_ID": "726feb22-332b-4eff-9bbf-fb4969bd627b"
+      },
       "android": {
-        "buildType": "apk",
-        "env": {
-          "EXPO_PUBLIC_API_URL": "https://vocalizeai.app.br/api",
-          "EXPO_PUBLIC_API_KEY": "b5694358-82bd-4bf0-81ab-32df891b5f86"
-        }
-      }
+        "buildType": "apk"
+      },
+      "autoIncrement": true
     },
     "development": {
       "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://143.110.225.152:8000/api",
+        "EXPO_PUBLIC_API_KEY": "vocalize-local-teste",
+        "EXPO_PUBLIC_PROJECT_ID": "4207591d-1878-448c-b44f-a3d6f6f4fd48",
+        "APP_VARIANT": "development"
+      },
       "android": {
-        "buildType": "apk",
-        "env": {
-          "EXPO_PUBLIC_API_URL": "http://143.110.225.152:8000/api",
-          "EXPO_PUBLIC_API_KEY": "vocalize-local-teste"
-        }
+        "buildType": "apk"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://143.110.225.152:8000/api",
+        "EXPO_PUBLIC_API_KEY": "vocalize-local-teste",
+        "EXPO_PUBLIC_PROJECT_ID": "5fa1b7a6-f0f5-469a-821d-13252309d8ae",
+        "APP_VARIANT": "preview"
+      },
+      "android": {
+        "buildType": "apk"
       }
     },
     "simulator": {
-      "developmentClient": true,
+      "extends": "development",
       "ios": {
-        "simulator": true,
-        "env": {
-            "EXPO_PUBLIC_API_URL":"http://143.110.225.152:8000/api",
-            "EXPO_PUBLIC_API_KEY": "vocalize-local-teste"
-        }
+        "simulator": true
       }
     }
   }
