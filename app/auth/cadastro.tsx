@@ -23,6 +23,7 @@ import {
 import Toast from "react-native-toast-message";
 
 export default function CadastroUsuarioScreen() {
+  const [codigoConvite, setCodigoConvite] = useState("");
   const [nome, setNome] = useState("");
   const [celular, setCelular] = useState("");
   const [email, setEmail] = useState("");
@@ -34,6 +35,7 @@ export default function CadastroUsuarioScreen() {
   const [codigoConfirmacao, setCodigoConfirmacao] = useState("");
   const [termoAceite, setTermoAceite] = useState(false);
 
+  const [codigoConviteError, setCodigoConviteError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [nomeError, setNomeError] = useState("");
   const [celularError, setCelularError] = useState("");
@@ -45,6 +47,13 @@ export default function CadastroUsuarioScreen() {
 
   const validarCampos = () => {
     let isValid = true;
+
+    if (!codigoConvite.trim()) {
+      setCodigoConviteError("Código de convite é obrigatório");
+      isValid = false;
+    } else {
+      setCodigoConviteError("");
+    }
 
     if (!nome.trim()) {
       setNomeError("Nome é obrigatório");
@@ -126,6 +135,7 @@ export default function CadastroUsuarioScreen() {
     setIsLoading(true);
     try {
       const isRegistered = await register(
+        codigoConvite,
         nome,
         email,
         celular,
@@ -235,6 +245,8 @@ export default function CadastroUsuarioScreen() {
             <Text style={styles.sectionTitle}>Informações Pessoais</Text>
 
             <FormUsuario
+              codigoConvite={codigoConvite}
+              setCodigoConvite={setCodigoConvite}
               nome={nome}
               setNome={setNome}
               email={email}

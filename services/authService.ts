@@ -163,6 +163,7 @@ const tryAutoLogin = async (): Promise<boolean> => {
  * @returns Retorna true se o cadastro foi bem sucedido, caso contrário false
  */
 const register = async (
+  codigo_convite: string,
   nome: string,
   email: string,
   celular: string,
@@ -170,6 +171,15 @@ const register = async (
   confirmaSenha: string,
   aceiteTermos: boolean
 ): Promise<boolean> => {
+  if (!codigo_convite.trim()) {
+    Toast.show({
+      type: "error",
+      text1: "Erro ao cadastrar usuário",
+      text2: "Código de convite é obrigatório.",
+    });
+    return false;
+  }
+
   if (!nome || !celular || !email || !senha || !confirmaSenha) {
     Toast.show({
       type: "error",
@@ -208,6 +218,7 @@ const register = async (
 
   try {
     const response = await api.post("/auth/register", {
+      codigo_convite,
       nome,
       email,
       celular,

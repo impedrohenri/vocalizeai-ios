@@ -6,6 +6,8 @@ import { StyleSheet, View } from "react-native";
 import { FormUsuarioProps } from "@/types/FormUsuarioProps";
 
 export default function FormUsuario({
+  codigoConvite,
+  setCodigoConvite,
   nome,
   setNome,
   email,
@@ -49,6 +51,16 @@ export default function FormUsuario({
         error={!!nomeError}
         errorMessage={nomeError}
       />
+
+      <Input
+        label="Código de Convite"
+        placeholder="Informe seu código de convite"
+        value={codigoConvite}
+        onChangeText={setCodigoConvite}
+        leftIcon={<MaterialIcons name="confirmation-number" size={20} color="#666" />}
+        error={false}
+      />
+
 
       <Input
         label="Celular"
