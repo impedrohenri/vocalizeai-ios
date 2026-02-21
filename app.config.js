@@ -28,7 +28,7 @@ export default ({ config }) => ({
     slug: getSlug(),
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/images/splashscreen_logo.png",
+    icon: "./assets/images/ios-light.png",
     scheme: "myapp",
     userInterfaceStyle: "automatic",
     jsEngine: "hermes",
@@ -55,12 +55,17 @@ export default ({ config }) => ({
         NSUserNotificationUsageDescription: "Precisamos enviar notificações para manter você informado sobre o status da gravação.",
 
       },
+      icon: {
+        dark: "./assets/images/ios-dark.png",
+        light: "./assets/images/ios-light.png",
+        tinted: "./assets/images/ios-tinted.png"
+      }
     },
 
     android: {
       package: getUniqueIdentifier(),
       adaptiveIcon: {
-        foregroundImage: "./assets/images/splashscreen_logo.png",
+        foregroundImage: "./assets/images/android-adaptive-icon.png",
         backgroundColor: "#ffffff",
       },
       permissions: [
@@ -75,7 +80,7 @@ export default ({ config }) => ({
       usesCleartextTraffic: IS_DEV || IS_PREVIEW,
       foregroundService: {
         name: "Gravação de Áudio",
-        icon: "./assets/images/splashscreen_logo.png",
+        icon: IS_DEV ? "./assets/images/android-adaptive-icon-black.png": "./assets/images/android-adaptive-icon.png",
         notificationTitle: "Gravação em andamento",
         notificationColor: "#FF0000"
       },

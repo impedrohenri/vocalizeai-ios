@@ -219,7 +219,7 @@ export default function LoginScreen() {
             onPress={() => Linking.openURL("https://vocalizeai.app.br")}
           />
           <Text style={{ textAlign: "center", margin: 8, height: 54 }}>
-            v.1.0.0-alpha
+            v.1.3.0-alpha
           </Text>
         </View>
       </ScrollView>
