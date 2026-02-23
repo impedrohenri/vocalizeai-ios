@@ -44,6 +44,13 @@ export default function AuthLayout() {
           headerShown: false
         }}
       />
+      <Stack.Screen
+        name="aguardar-acesso"
+        options={{
+          headerBackVisible: false,
+          headerShown: false
+        }}
+      />
     </Stack>
   );
 }
