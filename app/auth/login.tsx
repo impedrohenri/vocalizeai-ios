@@ -89,9 +89,7 @@ export default function LoginScreen() {
 
     try {
       const loginStatus = await doLogin(email, password, rememberMe);
-      if (loginStatus === "success") {
-        router.replace("/(tabs)");
-      } else if (loginStatus === "unverified") {
+      if (loginStatus === "unverified") {
         setIsModalVisible(true);
       }
     } catch (error: any) {
@@ -113,10 +111,7 @@ export default function LoginScreen() {
         text2: "Você já pode acessar o aplicativo.",
       });
       setIsModalVisible(false);
-      const loginStatus = await doLogin(email, password);
-      if (loginStatus === "success") {
-        router.replace("/(tabs)");
-      }
+      await doLogin(email, password);
     } catch (error: any) {
       Toast.show({
         type: "error",

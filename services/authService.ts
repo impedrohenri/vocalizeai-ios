@@ -4,6 +4,7 @@ import Toast from "react-native-toast-message";
 import { api, apiPublic } from "./api";
 import { saveTokens, clearTokens, checkAndClearOldCache } from "./util";
 import { jwtDecode } from 'jwt-decode';
+import { verificarPermissaoAcesso } from "@/utils/VerificarPermissaoAcesso";
 
 interface TokenPayload {
   sub: string;
@@ -92,6 +93,8 @@ const doLogin = async (email: string, senha: string, rememberMe: boolean = true)
         } else {
           await AsyncStorage.setItem("username", email.split('@')[0]);
         }
+        await AsyncStorage.setItem("acessoPermitido", String(userResponse.data.acesso_permitido));
+        verificarPermissaoAcesso(userResponse.data.acesso_permitido);
       } catch (userError) {
         await AsyncStorage.setItem("username", email.split('@')[0]);
       }

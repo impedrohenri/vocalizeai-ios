@@ -182,9 +182,7 @@ export default function CadastroUsuarioScreen() {
       setIsModalVisible(false);
 
       const loginResult = await doLogin(email, senha);
-      if (loginResult === "success") {
-        router.push("/auth/cadastro-participante");
-      } else {
+      if (loginResult !== "success") {
         router.push("/auth/login");
       }
     } catch (error: any) {
