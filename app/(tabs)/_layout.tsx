@@ -1,6 +1,8 @@
 import { Header } from "@/components/Header";
 import { getRole } from "@/services/util";
+import { verificarPermissaoAcesso } from "@/utils/VerificarPermissaoAcesso";
 import { MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Tabs } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { StyleSheet } from "react-native";
@@ -32,6 +34,14 @@ export default function TabLayout() {
     };
     fetchRole();
   }, []);
+
+  useEffect(() => {
+    const checkAccessPermission = async () => {
+      const acessoPermitido = await AsyncStorage.getItem("acessoPermitido")
+      verificarPermissaoAcesso(String(acessoPermitido) === "true", true, "");
+    }
+    checkAccessPermission();
+  }, [])
 
   if (role == null) {
     return null;
