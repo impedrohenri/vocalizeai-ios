@@ -35,7 +35,6 @@ export default function CadastroUsuarioScreen() {
   const [codigoConfirmacao, setCodigoConfirmacao] = useState("");
   const [termoAceite, setTermoAceite] = useState(false);
 
-  const [codigoConviteError, setCodigoConviteError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [nomeError, setNomeError] = useState("");
   const [celularError, setCelularError] = useState("");
@@ -47,13 +46,6 @@ export default function CadastroUsuarioScreen() {
 
   const validarCampos = () => {
     let isValid = true;
-
-    if (!codigoConvite.trim()) {
-      setCodigoConviteError("Código de convite é obrigatório");
-      isValid = false;
-    } else {
-      setCodigoConviteError("");
-    }
 
     if (!nome.trim()) {
       setNomeError("Nome é obrigatório");

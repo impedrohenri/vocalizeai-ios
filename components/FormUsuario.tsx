@@ -53,16 +53,6 @@ export default function FormUsuario({
       />
 
       <Input
-        label="Código de Convite"
-        placeholder="Informe seu código de convite"
-        value={codigoConvite}
-        onChangeText={setCodigoConvite}
-        leftIcon={<MaterialIcons name="confirmation-number" size={20} color="#666" />}
-        error={false}
-      />
-
-
-      <Input
         label="Celular"
         placeholder="Informe seu número de celular"
         keyboardType="phone-pad"
@@ -97,6 +87,15 @@ export default function FormUsuario({
             }
             error={!!confirmaSenhaError}
             errorMessage={confirmaSenhaError}
+          />
+
+          <Input
+            label="Código de Convite (Opcional)"
+            placeholder="Informe o código de convite fornecido"
+            value={codigoConvite}
+            onChangeText={setCodigoConvite}
+            leftIcon={<MaterialIcons name="confirmation-number" size={20} color="#666" />}
+            error={false}
           />
         </>
       )}
