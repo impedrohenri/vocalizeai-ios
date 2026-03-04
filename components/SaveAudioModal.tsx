@@ -45,7 +45,7 @@ export default function SaveAudioModal({
   useEffect(() => {
     fetchParticipantes();
     fetchVocalizations();
-  }, []);
+  }, [showSaveAudioModal]);
   
   const fetchParticipantes = async () => {
     setLoadingParticipantes(true);
@@ -60,11 +60,13 @@ export default function SaveAudioModal({
         }
       }
     } catch (error: any) {
-      Toast.show({
-        type: "error",
-        text1: error instanceof Error ? JSON.stringify(error.message) : "Erro",
-        text2: "Erro ao carregar participantes do usuário",
-      });
+      if (showSaveAudioModal === true) {
+        Toast.show({
+          type: "error",
+          text1: error instanceof Error ? JSON.stringify(error.message) : "Erro",
+          text2: "Erro ao carregar participantes do usuário",
+        });
+      }
     } finally {
       setLoadingParticipantes(false);
     }
@@ -80,11 +82,13 @@ export default function SaveAudioModal({
         setSelectedVocalizationId(vocalizations[0].id);
       }
     } catch (error) {
-      Toast.show({
-        type: "error",
-        text1: error instanceof Error ? JSON.stringify(error.message) : "Erro",
-        text2: "Não foi possível carregar os rótulos de vocalizações",
-      });
+      if (showSaveAudioModal === true) {
+        Toast.show({
+          type: "error",
+          text1: error instanceof Error ? JSON.stringify(error.message) : "Erro",
+          text2: "Não foi possível carregar os rótulos de vocalizações",
+        });
+      }
     } finally {
       setLoadingVocalizations(false);
     }
