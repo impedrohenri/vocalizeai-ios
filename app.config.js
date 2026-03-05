@@ -88,7 +88,6 @@ export default ({ config }) => ({
 
     plugins: [
       "expo-router",
-      "expo-audio",
       "expo-font",
       "expo-web-browser",
       "expo-asset",
@@ -117,6 +116,14 @@ export default ({ config }) => ({
         {
           microphonePermission: "Permitir que o VocalizeAI acesse o microfone para gravar áudio.",
         },
+      ],
+      [
+        "expo-audio",
+        {
+          microphonePermission: "Permitir que o VocalizeAI acesse o microfone para gravar áudio.",
+          enableBackgroundPlayback: true,
+          enableBackgroundRecording: true
+        }
       ],
     ],
 
