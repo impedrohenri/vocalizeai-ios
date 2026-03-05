@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   },
   recordButton: {
     backgroundColor: "#2196F3",
-    width: 100,
+    minWidth: 100,
     height: 100,
     borderRadius: 50,
   },
