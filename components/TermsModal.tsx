@@ -1,6 +1,7 @@
 import ButtonCustom from "@/components/Button";
 import React, { useEffect, useState } from "react";
 import {
+  Linking,
   Modal,
   ScrollView,
   StyleSheet,
@@ -37,6 +38,10 @@ export function TermsModal({
     if (onAcceptChange) {
       onAcceptChange(newAccepted);
     }
+  };
+
+  const visitarSite = () => {
+    Linking.openURL('https://www.vocalizeai.app.br');
   };
 
   return (
@@ -81,9 +86,12 @@ export function TermsModal({
             <Text style={styles.paragraph}>
               Esta pesquisa tem como objetivo desenvolver uma ferramenta baseada
               em inteligência artificial capaz de auxiliar na interpretação das
-              vocalizações de pessoas autistas não verbais. Para que isto seja
-              possível, estamos utilizando nesta etapa da pesquisa um aplicativo
-              que possibilita aos cuidadores e responsáveis coletar e
+              vocalizações de pessoas autistas não verbais.
+            </Text>
+
+            <Text style={styles.paragraph}>
+              Para que isto seja possível, estamos utilizando nesta etapa da pesquisa
+              um aplicativo que possibilita aos cuidadores e responsáveis coletar e
               classificar novas vocalizações emitidas por esses indivíduos. As
               vocalizações coletadas nesta fase, serão utilizadas para formar
               uma base de dados que será utilizada em um futuro próximo para
@@ -103,23 +111,51 @@ export function TermsModal({
 
             <Text style={styles.sectionTitle}>3. Uso dos dados</Text>
             <Text style={styles.paragraph}>
-              As vocalizações e classificações fornecidas serão utilizadas
-              exclusivamente para fins de pesquisa científica e para o
-              desenvolvimento de uma ferramenta de inteligência artificial.
-              Nenhuma informação pessoal identificável será divulgada ou
-              compartilhada com terceiros sem seu consentimento prévio. Seus
-              dados serão tratados com confidencialidade e armazenados em
-              ambiente seguro.
+              As vocalizações e classificações fornecidas serão utilizadas exclusivamente para fins de
+              pesquisa científica e para o desenvolvimento de uma ferramenta de inteligência artificial. As
+              gravações coletadas passarão por procedimentos de tratamento e anonimização, de modo
+              a evitar a identificação dos participantes. Após esse processo, as vocalizações
+              segmentadas serão disponibilizadas de forma pública para a comunidade científica, sem
+              qualquer informação pessoal associada.
+            </Text>
+            <Text style={styles.paragraph}>
+              O acesso aos dados pessoais estará restrito aos responsáveis pela pesquisa e nenhuma
+              informação pessoal identificável será divulgada ou compartilhada com terceiros sem seu
+              consentimento prévio. Seus dados pessoais serão tratados com confidencialidade e
+              armazenados em ambiente seguro por um período de até 10 anos após a conclusão da
+              pesquisa, já as vocalizações, permanecerão disponíveis por tempo indeterminado uma vez
+              que sejam publicamente disponibilizadas. O participante poderá ainda solicitar a remoção
+              de todos os seus dados a qualquer momento durante o decorrer da pesquisa, sendo essa
+              solicitação atendida de forma imediata pelos pesquisadores responsáveis.
             </Text>
 
             <Text style={styles.sectionTitle}>4. Riscos e benefícios</Text>
             <Text style={styles.paragraph}>
-              Não há riscos diretos associados à participação na pesquisa. A sua
-              colaboração contribuirá para o avanço científico no campo da
-              comunicação alternativa para pessoas autistas não verbais, podendo
-              gerar impactos positivos na qualidade de vida desses indivíduos e
-              de seus cuidadores.
+              A participação neste estudo envolve o risco de quebra de confidencialidade por meio da
+              identificação da vocalização. Como os áudios irão compor uma base de dados pública,
+              existe a possibilidade de que a identidade do participante seja reconhecida por pessoas
+              próximas através das vocalizações, ainda que qualquer menção direta a nomes ou dados
+              identificadores seja removida do conteúdo.
             </Text>
+            <Text style={styles.paragraph}>
+              Os participantes da pesquisa, estarão contribuindo de maneira decisiva para gerar dados
+              que possibilitem, num futuro próximo, que a universidade disponibilize gratuitamente para a
+              sociedade um aplicativo que terá a capacidade de "traduzir" as vocalizações emitidas por
+              indivíduos autistas não verbais. Como as “amostras” de vocalizações serão geradas pelos
+              participantes, estes terão o benefício de que o app criado terá maior assertividade se usado
+              com as próprias crianças participantes do processo de coleta. Sendo assim, essas pessoas
+              terão a oportunidade de usar o app em diversos ambientes, como na escola por exemplo,
+              para que essas pessoas possam ter suas emoções e sentimentos “traduzidos” nas
+              interações com outras pessoas desconhecidas. Desta forma, entende-se que os
+              participantes da pesquisa serão diretamente beneficiados no futuro com a utilização do
+              aplicativo.
+            </Text>
+            <Text style={styles.paragraph}>
+              A sua colaboração contribuirá para o avanço científico no campo da comunicação
+              alternativa para pessoas autistas não verbais, podendo gerar impactos positivos na
+              qualidade de vida desses indivíduos e de seus cuidadores.
+            </Text>
+
 
             <Text style={styles.sectionTitle}>5. Confidencialidade</Text>
             <Text style={styles.paragraph}>
@@ -149,6 +185,10 @@ export function TermsModal({
               </Text>
               <Text style={styles.contactLabel}>Campus: </Text>
               <Text>Jaboatão dos Guararapes</Text>
+            </Text>
+
+            <Text>
+              Mais informações sobre o projeto em: <Text style={styles.link} onPress={() => visitarSite()}>https://www.vocalizeai.app.br</Text>
             </Text>
 
             <View style={styles.divider} />
@@ -281,5 +321,9 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
+  },
+  link: {
+    color: "#007AFF",
+    textDecorationLine: "underline",
   },
 });
