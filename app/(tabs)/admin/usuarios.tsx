@@ -191,12 +191,20 @@ export default function UsuariosScreen() {
 
   const permitirAcesso = async (id: number) => {
     try {
-      await api.post(`/usuarios/${id}/permitir-ou-revogar-acesso`);
-      Toast.show({
-        type: "success",
-        text1: "Sucesso",
-        text2: "Acesso permitido para o usuário!",
-      });
+      const resp = await api.post(`/usuarios/${id}/permitir-ou-revogar-acesso`);
+      if (resp.data.acesso_permitido) {
+        Toast.show({
+          type: "success",
+          text1: "Sucesso",
+          text2: "Acesso permitido para o usuário!",
+        });
+      } else if (!resp.data.acesso_permitido) {
+        Toast.show({
+          type: "info",
+          text1: "Acesso revogado",
+          text2: "O acesso do usuário foi revogado.",
+        });
+      }
       fetchUsuarios();
     } catch (error: any) {
       Toast.show({
@@ -216,16 +224,6 @@ export default function UsuariosScreen() {
       >
         <View style={styles.userHeader}>
           <Text style={styles.userName}>{item.nome}</Text>
-          {/* 
-          <Text>
-            <Text style={styles.userName}>
-            {item.nome}
-            </Text>
-            {item.acesso_permitido ? 
-            <Text style={{color: "green"}}>{"\n"}(Acesso Permitido)</Text> : 
-            <Text style={{color: "#daaf16"}}>{"\n"}(Acesso Pendente)</Text>}
-          </Text>
-          */}
           <View style={styles.actionButtons}>
             <TouchableOpacity
               onPress={(e) => {
