@@ -8,6 +8,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 
 export default function aguardarAcesso() {
   const [nome, setNome] = useState<string | null>(null);
+  const phoneNumber = "(81) 98888-0582";
 
   useEffect(() => {
     const getNome = async () => {
@@ -23,11 +24,11 @@ export default function aguardarAcesso() {
   }
 
   const abrirEmail = () => {
-    Linking.openURL(`mailto:vocalizeai.app@gmail.com?subject=Informações%20sobre%20o%20VocalizeAI&body=Olá,%0D%0A%0D%0AGostaria%20de%20obter%20mais%20informações%20sobre%20o%20VocalizeAI%20e%20a%20pesquisa.%20Tenho%20interesse%20em%20entender%20melhor%20a%20proposta.%0D%0A%0D%0A${nome}`);
+    Linking.openURL(`mailto:vocalizeai.app@gmail.com?subject=Informações%20sobre%20o%20VocalizeAI&body=Olá,%0D%0A%0D%0AGostaria%20de%20obter%20mais%20informações%20sobre%20o%20VocalizeAI.%20Tenho%20interesse%20em%20entender%20melhor%20a%20proposta.%0D%0A%0D%0A${nome}`);
   };
 
   const abrirWhatsApp = () => {
-    Linking.openURL("https://wa.me/5581985004475?text=Olá,%20gostaria%20de%20mais%20informações%20sobre%20o%20VocalizeAI%20e%20a%20pesquisa");
+    Linking.openURL("https://wa.me/558198888-0582?text=Olá,%20gostaria%20de%20mais%20informações%20sobre%20o%20VocalizeAI");
   };
 
   const visitarSite = () => {
@@ -35,7 +36,7 @@ export default function aguardarAcesso() {
   };
 
   return (
-    <View style={{ flex: 1, justifyContent: "space-around", alignItems: 'center', gap: 40, backgroundColor: '#fff' }}>
+    <View style={{ flex: 1, justifyContent: "space-evenly", alignItems: 'center', gap: 40, backgroundColor: '#fff' }}>
       <View style={{ width: "85%", marginTop: 50 }}>
         <View style={styles.logoContainer}>
           <Text style={styles.logoText}>VocalizeAI</Text>
@@ -57,32 +58,26 @@ export default function aguardarAcesso() {
             Aguarde que entraremos em contato com você.
           </Text>
 
-          <Text
+          <View
             style={{
-              fontSize: 18,
-              textAlign: "center",
               marginTop: 70,
-              fontWeight: "bold",
-              color: "#2196F3",
-              textDecorationLine: "underline",
+              alignItems: "center",
             }}
           >
             <Pressable onPress={abrirEmail} style={styles.row}>
-              <MaterialIcons name="email" size={16} color="#2196F3" />
-              <Text style={styles.linkText}>vocalizeai.app@gmail.com</Text>
+              <Text><MaterialIcons name="email" size={16} color="#2196F3" /></Text>
+              <Text style={{ ...styles.linkText }}>vocalizeai.app@gmail.com</Text>
             </Pressable>
-              {"\n"}
-              {"\n"}
             <Pressable onPress={abrirWhatsApp} style={styles.row}>
-              <MaterialIcons name="message" size={16} color="#2196F3" />
-              <Text style={styles.linkText}>+55 (81) 98500-4475</Text>
+              <Text><MaterialIcons name="message" size={16} color="#2196F3" /></Text>
+              <Text style={styles.linkText}>{phoneNumber}</Text>
             </Pressable>
-          </Text>
+          </View>
         </View>
 
       </View>
 
-      <View style={{ width: "80%" }}>
+      <View style={{ width: "80%", marginBottom: 70, alignItems: "center" }}>
         <ButtonCustom
           title="Voltar para o início"
           onPress={handleSubmit}
@@ -90,12 +85,10 @@ export default function aguardarAcesso() {
           style={styles.mainButton}
           icon={<MaterialIcons name="login" size={20} color="#FFF" />}
         />
+        <Text style={{ color: "#2196F3", fontSize: 15, marginTop: 50, marginInline: "auto" }} onPress={visitarSite}>
+          Conhecer o VocalizeAI
+        </Text>
       </View>
-
-
-      <Text style={{ color: "#2196F3", fontSize: 15 }} onPress={visitarSite}>
-        Conhecer o VocalizeAI
-      </Text>
     </View>
   )
 }
@@ -134,12 +127,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginTop: 20,
+    marginTop: 10,
   },
   linkText: {
     color: "#2196F3",
     fontSize: 17,
-    textDecorationLine: "underline",
-    fontWeight: "600",
+    textAlign: "center",
+    fontWeight: "bold",
+    borderBottomWidth: 1,
+    borderBottomColor: "#2196F3",
+    borderStyle: "dotted",
   },
 })
