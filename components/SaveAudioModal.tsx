@@ -7,7 +7,9 @@ import VocalizationSelect from './VocalizationSelect'
 import { Vocalizacao } from '@/types/Vocalizacao'
 import ParticipanteSelector from '@/components/ParticipanteSelect'
 import { Dispatch, SetStateAction, useEffect, useState } from 'react'
-import { Audio } from 'expo-av'
+import {
+  AudioRecorder
+} from 'expo-audio';
 import { getVocalizacoes } from '@/services/vocalizacoesService'
 import { getParticipantesByUsuario } from '@/services/participanteService'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -15,24 +17,16 @@ import { File } from "expo-file-system";
 
 
 interface ISaveAudioModalProps {
-  recording: Audio.Recording | null;
-  setRecording: Dispatch<SetStateAction<Audio.Recording | null>>;
+  recording: AudioRecorder | null;
   showSaveAudioModal: boolean;
   setShowSaveAudioModal: Dispatch<SetStateAction<boolean>>;
-  isRecording: boolean;
-  setIsRecording: Dispatch<SetStateAction<boolean>>;
-  isPaused: boolean;
-  setIsPaused: Dispatch<SetStateAction<boolean>>;
   recordingTime: number;
-  setRecordingTime: Dispatch<SetStateAction<number>>;
 }
 
 export default function SaveAudioModal({
-  recording, setRecording,
+  recording,
   showSaveAudioModal, setShowSaveAudioModal,
-  isRecording, setIsRecording,
-  isPaused, setIsPaused,
-  recordingTime, setRecordingTime }: ISaveAudioModalProps) {
+  recordingTime }: ISaveAudioModalProps) {
 
   const [selectedParticipanteId, setSelectedParticipanteId] = useState<number>(0);
   const [selectedVocalizationId, setSelectedVocalizationId] = useState<number>(0);
@@ -122,9 +116,8 @@ export default function SaveAudioModal({
     }
 
     try {
-      await recording.stopAndUnloadAsync();
-
-      const uri = recording.getURI();
+      await recording.stop();
+      const uri = recording.uri;
       if (!uri) {
         throw new Error("URI da gravação não encontrada.");
       }
@@ -153,7 +146,7 @@ export default function SaveAudioModal({
       recordings.push({
         uri,
         timestamp: Date.now(),
-        duration: recordingTime,
+        duration: recordingTime / 1000,
         vocalizationId: selectedVocalizationId,
         vocalizationName,
         participanteId: selectedParticipanteId,
@@ -163,10 +156,6 @@ export default function SaveAudioModal({
       await AsyncStorage.setItem("recordings", JSON.stringify(recordings));
 
       // Reset de estados
-      setRecording(null);
-      setRecordingTime(0);
-      setIsRecording(false);
-      setIsPaused(false);
       setShowSaveAudioModal(false);
 
       Toast.show({

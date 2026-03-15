@@ -3,49 +3,52 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useContext, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
-import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
+import {
+  useAudioRecorder,
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioRecorderState,
+} from 'expo-audio';
 import Timer from "@/components/Timer";
 import SaveAudioModal from "@/components/SaveAudioModal";
 import { RecordingContext } from "@/contexts/RecordingContext";
 
 export default function HomeScreen() {
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasPermission, setHasPermission] = useState(false);
-
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [recordingTime, setRecordingTime] = useState(0);
 
   const [showSaveAudioModal, setShowSaveAudioModal] = useState(false);
   const [showDiscardModal, setShowDiscardModal] = useState(false);
 
-  const {setIsRecording: setContextIsRecording} = useContext(RecordingContext);
+  const { isRecording, setIsRecording, isPaused, setIsPaused, recordingTime, setRecordingTime } = useContext(RecordingContext);
 
+  // Inicialização do novo Recorder com suporte a Background
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(audioRecorder, 200);
+
+  // Permissões e Configuração Inicial
   useEffect(() => {
     try {
-      Audio
-        .requestPermissionsAsync()
-        .then((granted) => {
-          if (granted.granted) {
-            Audio.setAudioModeAsync({
-              allowsRecordingIOS: true,
-              playsInSilentModeIOS: true,
-              interruptionModeIOS: InterruptionModeIOS.DuckOthers,
-              shouldDuckAndroid: true,
-              interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-              playThroughEarpieceAndroid: false,
-              staysActiveInBackground: true,
-            });
-            setHasPermission(granted.granted);
-          }
-        })
+      (async () => {
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      if (!status.granted) {
+        Alert.alert('Permission to access microphone was denied');
+      }
+
+      setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+        shouldPlayInBackground: true,
+        allowsBackgroundRecording: true,
+      });
+    })();
     } catch (err) {
       Toast.show({
         type: "error",
@@ -57,107 +60,65 @@ export default function HomeScreen() {
 
   }, []);
 
+
+  // Atualiza os estados do 'RecordingContext' de acordo com o 'recorderState'
   useEffect(() => {
-    if (!recording) return;
-    recording.setOnRecordingStatusUpdate((status) => {
-      if (status.isRecording) {
-        setRecordingTime(Math.floor(status.durationMillis / 1000));
-      }
-    });
-    recording.setProgressUpdateInterval(100);
+    setIsRecording(recorderState.isRecording)
+    setIsPaused(!recorderState.isRecording && recorderState.canRecord)
+    setRecordingTime(recorderState.durationMillis)
+  }, [recorderState])
 
-    return () => {
-      recording.setOnRecordingStatusUpdate(null);
-    };
-  }, [recording])
-
-  const startRecording = async () => {
-    Audio.setAudioModeAsync({
-      allowsRecordingIOS: true
-    })
-
-    try {
-      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      setRecording(recording);
-      setIsRecording(true);
-      setContextIsRecording(true)
-    } catch (err) {
-      Toast.show({
-        type: "error",
-        text1: "Erro ao iniciar gravação",
-        text2: err instanceof Error ? JSON.stringify(err.message) : "Por favor, tente novamente mais tarde.",
-      });
-    }
-  };
-
-  const pauseRecording = async () => {
-    if (!recording) return;
-
-    let status = await recording.getStatusAsync();
-
-    if (status.isRecording) {
-      status = await recording.pauseAsync();
-      setIsPaused(true)
-      setIsRecording(status.isRecording);
-      setContextIsRecording(status.isRecording)
-    }
-  };
-
-  const unpauseRecording = async () => {
-    if (!recording) return;
-
-    let status = await recording.getStatusAsync();
-
-    if (isPaused) {
-      status = await recording.startAsync();
-      setIsRecording(status.isRecording);
-      setContextIsRecording(status.isRecording)
-    }
-
-    setIsPaused(false);
-  }
-
-  const saveRecordingLocally = async () => {
-    setShowSaveAudioModal(true);
-  };
 
   const handleRecordPress = async () => {
     setIsLoading(true);
 
     try {
-      if (!!recording && !isPaused) {
-        pauseRecording();
-      } else if (!!recording && isPaused) {
-        unpauseRecording();
-      } else if (!recording) {
-        startRecording();
+      if (isRecording) { // Se já estiver gravando, pausa
+        audioRecorder.pause();
+
+      } else if (isPaused) { // Se estiver pausado, retoma
+        audioRecorder.record();
+
+      } else { // Se não, começa a gravar
+        await audioRecorder.prepareToRecordAsync();
+        audioRecorder.record();
       }
+
+    } catch (err) {
+      Toast.show({
+        type: "error",
+        text1: "Erro na gravação",
+        text2: "Não foi possível processar o áudio.",
+      });
     } finally {
       setIsLoading(false);
     }
+  };
 
-  }
 
   const handleDiscard = async () => {
-    if (recording) {
-      await recording.stopAndUnloadAsync();
-      const status = await recording.getStatusAsync();
-      setIsRecording(status.isRecording);
-      setContextIsRecording(status.isRecording)
-      setIsPaused(false);
-      setRecording(null);
-      setRecordingTime(0);
+    try {
+      audioRecorder.stop();
+      setShowDiscardModal(false);
+    } catch (err) {
+      console.error("Erro ao descartar:", err);
     }
-    setShowDiscardModal(false);
+  };
+
+  const saveRecordingLocally = () => {
+    setShowSaveAudioModal(true);
   };
 
   return (
     <View style={styles.container}>
-
-      <Timer isRecording={isRecording} isPaused={isPaused} recordingTime={recordingTime} />
+      <Timer 
+        isRecording={isRecording} 
+        isPaused={isPaused} 
+        recordingTime={recordingTime / 1000} 
+      />
 
       <View style={styles.controlContainer}>
-        {(isPaused || (recording && !isRecording)) && (
+        {(isPaused || (recordingTime > 0 && !isRecording)) && (
           <Pressable
             onPress={() => setShowDiscardModal(true)}
             style={({ pressed }) => [
@@ -175,8 +136,9 @@ export default function HomeScreen() {
           style={({ pressed }) => [
             styles.controlButton,
             styles.recordButton,
-            isRecording && styles.recordingButton,
-            pressed && styles.buttonPressed]}
+            recorderState.isRecording && styles.recordingButton,
+            pressed && styles.buttonPressed
+          ]}
           onPress={handleRecordPress}
           disabled={isLoading}
         >
@@ -195,11 +157,7 @@ export default function HomeScreen() {
                 size={40}
                 color="white"
               />
-              <Text
-                style={[
-                  styles.buttonText
-                ]}
-              >
+              <Text style={styles.buttonText}>
                 {isRecording && !isPaused
                   ? "Pausar"
                   : isPaused
@@ -210,7 +168,7 @@ export default function HomeScreen() {
           )}
         </Pressable>
 
-        {(isPaused || (recording && !isRecording)) && (
+        {(isPaused || (recordingTime > 0 && !isRecording)) && (
           <Pressable
             onPress={saveRecordingLocally}
             style={({ pressed }) => [
@@ -226,16 +184,10 @@ export default function HomeScreen() {
       </View>
 
       <SaveAudioModal
-        recording={recording}
-        setRecording={setRecording}
+        recording={audioRecorder} 
         showSaveAudioModal={showSaveAudioModal}
         setShowSaveAudioModal={setShowSaveAudioModal}
-        isRecording={isRecording}
-        setIsRecording={setIsRecording}
-        isPaused={isPaused}
-        setIsPaused={setIsPaused}
         recordingTime={recordingTime}
-        setRecordingTime={setRecordingTime}
       />
 
       <ConfirmationModal
