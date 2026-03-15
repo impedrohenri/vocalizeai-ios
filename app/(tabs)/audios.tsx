@@ -31,6 +31,7 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import { formatTime } from "@/utils/formatTime";
 
 export default function AudiosScreen() {
   const [recordings, setRecordings] = useState<AudioRecording[]>([]);
@@ -245,14 +246,6 @@ export default function AudiosScreen() {
 
     const participante = participantes.find((p) => p.id === participanteId);
     return participante ? participante.nome : `Participante ${participanteId}`;
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
   };
 
   async function handleDeleteAllAudios() {
@@ -1057,7 +1050,7 @@ export default function AudiosScreen() {
                     color="#666"
                   />
                   <Text style={styles.detailText} numberOfLines={1}>
-                    {selectedRecording.uri.split("/").pop()?.split("_")[1] ||
+                    {selectedRecording.uri.split("-").pop() ||
                       "Gravação"}
                   </Text>
                 </View>

@@ -1,18 +1,7 @@
-import { Audio } from 'expo-av';
-import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { formatTime } from "@/utils/formatTime";
 
 export default function Timer({ isRecording, isPaused, recordingTime }: { isRecording: boolean, isPaused: boolean, recordingTime: number }) {
-
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins.toString().padStart(2, "0")}:${secs
-            .toFixed(0)
-            .toString()
-            .padStart(2, "0")}`;
-    };
-
 
     return (
         <>
