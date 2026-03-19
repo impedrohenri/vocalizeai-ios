@@ -14,6 +14,7 @@ import { getVocalizacoes } from '@/services/vocalizacoesService'
 import { getParticipantesByUsuario } from '@/services/participanteService'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { File } from "expo-file-system";
+import FileOperations from '@/utils/FileOperations'
 
 
 interface ISaveAudioModalProps {
@@ -117,14 +118,19 @@ export default function SaveAudioModal({
 
     try {
       await recording.stop();
-      const uri = recording.uri;
+      let uri = recording.uri;
+
       if (!uri) {
         throw new Error("URI da gravação não encontrada.");
       }
 
+      if (!uri.startsWith("file://")) {
+        uri = `file://${uri}`;
+      }
+
       // Verificação física do arquivo
-      const file = new File(uri);
-      const fileInfo = file.info();
+      const tempFile = new File(uri);
+      const fileInfo = tempFile.info();
 
       if (!fileInfo.exists) {
         throw new Error("Arquivo de áudio não existe.");
@@ -132,6 +138,18 @@ export default function SaveAudioModal({
 
       if (!fileInfo.size || fileInfo.size < 50) {
         throw new Error("Arquivo de áudio inválido ou muito pequeno.");
+      }
+
+      const audioDir = await FileOperations.getAudioDirectory();
+      const fileName = `recording_${Date.now()}.m4a`;
+      const newUri = `${audioDir}${fileName}`;
+      const finalFile = new File(newUri)
+      console.log(">>>>>>", newUri)
+
+      try {
+        tempFile.move(finalFile);
+      } catch (e) {
+        throw new Error("Erro ao mover arquivo de áudio.");
       }
 
       const vocalizationName =
@@ -144,9 +162,9 @@ export default function SaveAudioModal({
         : [];
 
       recordings.push({
-        uri,
+        uri: newUri,
         timestamp: Date.now(),
-        duration: recordingTime / 1000,
+        duration: recordingTime,
         vocalizationId: selectedVocalizationId,
         vocalizationName,
         participanteId: selectedParticipanteId,
