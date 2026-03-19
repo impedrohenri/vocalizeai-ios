@@ -1,8 +1,7 @@
 import { SelectProps } from "@/types/SelectProps";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
 import React, { useState } from "react";
-import { StyleSheet, Text, View, Platform, Modal, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, View, Modal, TouchableOpacity, FlatList, TouchableWithoutFeedback } from "react-native";
 
 export default function Select({
   label,
@@ -13,7 +12,6 @@ export default function Select({
   leftIcon,
   placeholder,
 }: SelectProps) {
-
   const [isModalVisible, setModalVisible] = useState(false);
 
   const pickerContainerStyle = [styles.pickerContainer, style];
@@ -23,15 +21,27 @@ export default function Select({
     : options;
 
   const selectedOption = pickerOptions.find((o) => o.value === selectedValue);
+  const displayLabel = selectedOption?.label ?? placeholder ?? "Selecione...";
 
-  if (Platform.OS === "ios") return (
-    <>
-      <View style={styles.container}>
+  return (
+    <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      <View style={pickerContainerStyle} onTouchStart={() => setModalVisible(true)}>
+
+      <TouchableOpacity
+        style={pickerContainerStyle}
+        activeOpacity={0.7}
+        onPress={() => setModalVisible(true)}
+      >
         {leftIcon && <View style={styles.iconContainer}>{leftIcon}</View>}
         <View style={styles.pickerWrapper}>
-          <Text>{selectedOption?.label}</Text>
+          <Text
+            style={[
+              styles.triggerText,
+              (selectedValue === "" || selectedValue == null) && { color: "#999" },
+            ]}
+          >
+            {displayLabel}
+          </Text>
           <MaterialIcons
             name="arrow-drop-down"
             size={24}
@@ -39,7 +49,7 @@ export default function Select({
             style={styles.dropdownIcon}
           />
         </View>
-      </View>
+      </TouchableOpacity>
 
       <Modal
         visible={isModalVisible}
@@ -47,72 +57,53 @@ export default function Select({
         animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlayIOS} onTouchStart={() => setModalVisible(false)}>
-        </View>
-        <View style={styles.pickerHeaderIOS}>
-          <MaterialIcons name="close" size={24} color="#007AFF" style={{paddingInline: 10}} onTouchStart={() => setModalVisible(false)}/>
-        </View>
-        <View style={styles.pickerWrapperIOS}>
-          <Picker 
-            selectedValue={selectedValue}
-            onValueChange={onValueChange}          
-            style={styles.pickerIOS}>
-          {pickerOptions.map((option) => (
-            <Picker.Item
-              key={option.value}
-              label={option.label}
-              value={option.value}
-              color={option.value === "" ? "#999" : "#424242"}
-            />
-          ))}
-        </Picker>
-        </View>
-        <View style={styles.pickerFooterIOS}>
-          <TouchableOpacity
-              onPress={() => setModalVisible(false)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Text style={styles.doneButtonText}>Concluído</Text>
-            </TouchableOpacity>
-        </View>
-        <View style={styles.modalOverlayIOS} onTouchStart={() => setModalVisible(false)}>
-        </View>
-      </Modal>
-    </View>
-    </>
-  )
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPressOut={() => setModalVisible(false)}
+        >
+          <TouchableWithoutFeedback>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{label}</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <MaterialIcons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={pickerContainerStyle}>
-        {leftIcon && <View style={styles.iconContainer}>{leftIcon}</View>}
-        <View style={styles.pickerWrapper}>
-          
-          <Picker
-            selectedValue={selectedValue}
-            onValueChange={onValueChange}
-            style={styles.picker}
-            dropdownIconColor="#666"
-            itemStyle={styles.pickerItem}
-          >
-            {pickerOptions.map((option) => (
-              <Picker.Item
-                key={option.value}
-                label={option.label}
-                value={option.value}
-                color={option.value === "" ? "#999" : "#424242"}
+              <FlatList
+                data={pickerOptions}
+                keyExtractor={(item, index) =>
+                  item.value != null ? String(item.value) : `fallback-key-${index}`
+                }
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.optionItem}
+                    onPress={() => {
+                      onValueChange(item.value);
+                      setModalVisible(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        item.value === selectedValue && styles.optionTextSelected,
+                        item.value === "" && { color: "#999" },
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+
+                    {item.value === selectedValue && item.value !== "" && (
+                      <MaterialIcons name="check" size={20} color="#007AFF" />
+                    )}
+                  </TouchableOpacity>
+                )}
               />
-            ))}
-          </Picker>
-          <MaterialIcons
-            name="arrow-drop-down"
-            size={24}
-            color="#666"
-            style={styles.dropdownIcon}
-          />
-        </View>
-      </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -143,59 +134,61 @@ const styles = StyleSheet.create({
     alignItems: "center",
     position: "relative",
   },
-  picker: {
+  triggerText: {
     flex: 1,
-    height: 56,
+    fontSize: 16,
     color: "#424242",
     paddingLeft: 12,
-  },
-  pickerItem: {
-    paddingLeft: 20,
-    fontSize: 16,
   },
   dropdownIcon: {
     position: "absolute",
     right: 12,
-    pointerEvents: "none",
   },
   iconContainer: {
     paddingLeft: 16,
     paddingRight: 8,
   },
 
-
-  // IOS
-  modalOverlayIOS: {
+  modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
+    padding: 20,
   },
-  pickerIOS: {
+  modalContent: {
     backgroundColor: "#fff",
-    elevation: 4,
+    borderRadius: 16,
+    maxHeight: "80%",
+    overflow: "hidden",
+    elevation: 5,
   },
-  pickerWrapperIOS: {
-    backgroundColor: "#e5e5e5",
-    paddingVertical: 1,
-  },
-  pickerHeaderIOS: {
+  modalHeader: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#fff",
-    height: 40,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
-  pickerFooterIOS: {
-    height: 44,
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    backgroundColor: "#fff",
-  },
-  doneButtonText: {
-    color: "#007AFF",
-    fontWeight: "600",
+  modalTitle: {
     fontSize: 18,
+    fontWeight: "bold",
+    color: "#424242",
+  },
+  optionItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f5f5f5",
+  },
+  optionText: {
+    fontSize: 16,
+    color: "#424242",
+  },
+  optionTextSelected: {
+    fontWeight: "bold",
+    color: "#007AFF",
   },
 });
