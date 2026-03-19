@@ -114,7 +114,7 @@ export default function HomeScreen() {
       <Timer 
         isRecording={isRecording} 
         isPaused={isPaused} 
-        recordingTime={recordingTime / 1000} 
+        recordingTime={recordingTime} 
       />
 
       <View style={styles.controlContainer}>
