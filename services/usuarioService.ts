@@ -198,3 +198,21 @@ export const deleteUser = async (id: any): Promise<void> => {
 
   await api.delete(`/usuarios/${id}`);
 }
+
+export const sendAccountDeletionCode = async () => {
+  const userId = await getUserId()
+  const resp = await api.get(`/usuarios/${userId}/send-account-deletion-code`)
+
+  return resp;
+}
+
+export const verifyAccountDeletionCode = async (code: string) => {
+  const userId = await getUserId()
+  const payload: any = {
+    code: code
+  }
+  const resp = await api.post(`/usuarios/${userId}/verify-account-deletion-code`, payload)
+  resp.data.status = resp.status
+
+  return resp.data;
+}
