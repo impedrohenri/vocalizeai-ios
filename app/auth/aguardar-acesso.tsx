@@ -1,4 +1,5 @@
 import ButtonCustom from '@/components/Button'
+import DeleteAccountModal from '@/components/DeleteAccountModal';
 import { MaterialIcons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 
 export default function aguardarAcesso() {
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [nome, setNome] = useState<string | null>(null);
   const phoneNumber = "(81) 98888-0582";
 
@@ -88,7 +90,22 @@ export default function aguardarAcesso() {
         <Text style={{ color: "#2196F3", fontSize: 15, marginTop: 50, marginInline: "auto" }} onPress={visitarSite}>
           Conhecer o VocalizeAI
         </Text>
+
+        <View>
+          <ButtonCustom
+            title="Excluir minha conta"
+            onPress={() => setIsDeleteModalVisible(true)}
+            color="#F44336"
+            variant='link'
+            style={{ marginTop: 20 }}
+            icon={<MaterialIcons name="delete" size={20} color="#ff0000" />}
+          />
+        </View>
       </View>
+          <DeleteAccountModal
+            isVisible={isDeleteModalVisible}
+            setIsVisible={setIsDeleteModalVisible}
+          />
     </View>
   )
 }
