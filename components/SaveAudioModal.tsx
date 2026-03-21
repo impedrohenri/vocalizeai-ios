@@ -15,6 +15,7 @@ import { getParticipantesByUsuario } from '@/services/participanteService'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { File } from "expo-file-system";
 import FileOperations from '@/utils/FileOperations'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 
 interface ISaveAudioModalProps {
@@ -37,11 +38,13 @@ export default function SaveAudioModal({
   const [loadingParticipantes, setLoadingParticipantes] = useState(false);
   const [loadingVocalizations, setLoadingVocalizations] = useState(false);
 
+  const insets = useSafeAreaInsets();
+
   useEffect(() => {
     fetchParticipantes();
     fetchVocalizations();
   }, [showSaveAudioModal]);
-  
+
   const fetchParticipantes = async () => {
     setLoadingParticipantes(true);
     try {
@@ -201,7 +204,12 @@ export default function SaveAudioModal({
         onRequestClose={() => setShowSaveAudioModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View
+            style={[
+              styles.modalContent,
+              { paddingBottom: 24 + insets.bottom }
+            ]}
+          >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Selecionar Rótulo</Text>
               <MaterialIcons

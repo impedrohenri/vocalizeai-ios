@@ -32,6 +32,7 @@ import {
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { formatTime } from "@/utils/formatTime";
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function AudiosScreen() {
   const [recordings, setRecordings] = useState<AudioRecording[]>([]);
@@ -76,6 +77,8 @@ export default function AudiosScreen() {
   const [isConnected, setIsConnected] = useState(true);
 
   const {isRecording} = useContext(RecordingContext);
+  const insets = useSafeAreaInsets();
+
 
   // Essas funções controlam a exibição dos modais para o iOS 
   const handleOpenDeleteModal = () => {
@@ -1005,7 +1008,12 @@ export default function AudiosScreen() {
         onRequestClose={() => setShowOptionsModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View 
+            style={[
+              styles.modalContent,
+              { paddingBottom: 24 + insets.bottom }
+            ]}
+          >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Dados da Gravação</Text>
               <TouchableOpacity
@@ -1050,7 +1058,7 @@ export default function AudiosScreen() {
                     color="#666"
                   />
                   <Text style={styles.detailText} numberOfLines={1}>
-                    {selectedRecording.uri.split("-").pop() ||
+                    {selectedRecording.uri.split("_").pop() ||
                       "Gravação"}
                   </Text>
                 </View>

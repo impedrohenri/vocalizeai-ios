@@ -28,6 +28,7 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function VocalizacoesScreen() {
   const [vocalizacoes, setVocalizacoes] = useState<Vocalizacao[]>([]);
@@ -41,6 +42,8 @@ export default function VocalizacoesScreen() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(true);
+
+    const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -334,7 +337,12 @@ export default function VocalizacoesScreen() {
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
+              <View
+                style={[
+                  styles.modalContent,
+                  { paddingBottom: 24 + insets.bottom }
+                 ]}
+              >
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>
                     {selectedVocalizacao
