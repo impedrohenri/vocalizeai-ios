@@ -85,6 +85,12 @@ export default function DeleteAccountModal({
       const userId = await getUserId();
       await deleteUser(userId);
       await doLogout();
+      Toast.show({
+        type: "success",
+        text1: "Conta excluída",
+        text2: "Sua conta foi excluída com sucesso!",
+      });
+      setIsVisible(false);
     }
   };
 
@@ -149,14 +155,6 @@ export default function DeleteAccountModal({
                   style={{ width: "100%", marginBottom: 34 }}
                 />
 
-                <ButtonCustom
-                  title="Reenviar código"
-                  onPress={sendConfirmationCode}
-                  variant="link"
-                  style={{ marginBottom: 20, width: "100%" }}
-                  disabled={isLoading}
-                />
-
                 <View style={styles.modalButtons}>
 
                   <ButtonCustom
@@ -172,6 +170,14 @@ export default function DeleteAccountModal({
                     style={{ width: "48%" }}
                   />
                 </View>
+                
+                <ButtonCustom
+                  title="Reenviar código"
+                  onPress={sendConfirmationCode}
+                  variant="link"
+                  style={{ marginTop: 10, width: "100%" }}
+                  disabled={isLoading}
+                />
               </>
             )}
 
