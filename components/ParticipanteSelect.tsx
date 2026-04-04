@@ -1,7 +1,9 @@
 import React from "react";
-import { StyleSheet, View, Text } from "react-native";
+import { StyleSheet, View, Text, Pressable } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import Select from "./Select";
+import { router } from "expo-router";
+import ButtonCustom from "./Button";
 
 type Participante = {
   id: number;
@@ -23,12 +25,20 @@ export default function ParticipanteSelect ({
 }: ParticipanteSelectProps) {
   if (participantes.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <MaterialIcons name="warning" size={24} color="#FFC107" />
-        <Text style={styles.emptyText}>
-          Nenhum participante cadastrado. Por favor, cadastre um participante primeiro.
-        </Text>
-      </View>
+      <>
+        <View style={styles.emptyContainer}>
+          <MaterialIcons name="warning" size={24} color="#FFC107" />
+          <Text style={styles.emptyText}>
+            Nenhum participante cadastrado. Por favor, cadastre um participante primeiro.
+          </Text>
+        </View>
+         <View style={{marginBottom: 20}}>
+              <ButtonCustom 
+                title="Cadastrar participante" 
+                variant="secondary" 
+                onPress={() => {router.push("/(tabs)/usuario/dados-participante")}}/>
+         </View>
+      </>
     );
   }
 

@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { File } from "expo-file-system";
 import FileOperations from '@/utils/FileOperations'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { router } from 'expo-router'
 
 
 interface ISaveAudioModalProps {
@@ -41,9 +42,15 @@ export default function SaveAudioModal({
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    fetchParticipantes();
-    fetchVocalizations();
+    if (showSaveAudioModal) {
+      fetchParticipantes();
+      fetchVocalizations();
+    };
   }, [showSaveAudioModal]);
+
+  useEffect(() => {
+    checkParticipantExists();
+  }, [])
 
   const fetchParticipantes = async () => {
     setLoadingParticipantes(true);
@@ -69,6 +76,18 @@ export default function SaveAudioModal({
       setLoadingParticipantes(false);
     }
   };
+
+  const checkParticipantExists = async () => {
+    const userId = await AsyncStorage.getItem("userId");
+    try {
+      if (userId) {
+        await getParticipantesByUsuario(userId);
+      }
+    } catch(err) {
+      const hasParticipant = await AsyncStorage.getItem("hasParticipant");
+      if (!hasParticipant && !showSaveAudioModal) router.push("/(tabs)/usuario/dados-participante");
+    }
+  }
 
   async function fetchVocalizations(forceRefresh: boolean = false) {
     setLoadingVocalizations(true);
