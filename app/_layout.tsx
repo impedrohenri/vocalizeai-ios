@@ -15,6 +15,7 @@ import Toast from "react-native-toast-message";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { RecordingContextProvider } from "@/contexts/RecordingContext";
+import { api } from "@/services/api";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -93,8 +94,31 @@ export default function RootLayout() {
     }
   };
 
+  const checkApiVersionCompatibility = async () => {
+    try {
+      await api.post("/version/check", process.env.EXPO_PUBLIC_APP_VERSION);
+      
+    } catch (error: any) {
+      const status = error?.response?.status;
+
+      if (status === 426) {
+        router.replace("/version/atualizar-app");
+      }
+
+      Toast.show({
+        type: "error",
+        text1: error instanceof Error ? error.message : "Erro",
+        text2: error.response?.data?.detail?.message || "Erro ao verificar versão do aplicativo.",
+      });
+    }
+  };
+
   useEffect(() => {
-    checkToken();
+    const initApp = async () => {
+      await checkToken();
+      await checkApiVersionCompatibility();
+    };
+    initApp();
     const failSafe = setTimeout(() => {
       if (isSplashVisible) {
         setIsSplashVisible(false);
