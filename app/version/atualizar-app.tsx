@@ -6,9 +6,9 @@ export default function AtualizarApp() {
 
   const handleUpdatePress = () => {
     if (Platform.OS === "ios") {
-      Linking.openURL("https://apps.apple.com/us/app/vocalizeai/id6760232544");
+      Linking.openURL("https://apps.apple.com/br/app/vocalizeai/id6760232544");
     } else if (Platform.OS === "android") {
-      Linking.openURL("https://play.google.com/store/apps/details?id=com.vocalizeai.app");
+      Linking.openURL("https://play.google.com/store/apps/details?id=com.cauta.vocalizeai");
     }
   };
 
