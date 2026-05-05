@@ -18,7 +18,7 @@ const getAppName = () => {
 const getSlug = () => {
   if (IS_DEV) return "vocalizeai-dev";
   if (IS_PREVIEW) return "vocalizeai-preview";
-  return "vocalizeai-ios";
+  return "vocalizeai";
 };
 
 export default ({ config }) => ({
@@ -26,7 +26,8 @@ export default ({ config }) => ({
   expo: {
     name: getAppName(),
     slug: getSlug(),
-    version: "1.0.0",
+    owner: "cauta",
+    version: process.env.EXPO_PUBLIC_APP_VERSION,
     orientation: "portrait",
     icon: "./assets/images/ios-light.png",
     scheme: "myapp",
@@ -46,12 +47,9 @@ export default ({ config }) => ({
         ,
         UIBackgroundModes: [
           "audio",
-          "fetch",
-          "processing",
           "remote-notification"
         ],
         NSMicrophoneUsageDescription: "Precisa de acesso ao microfone para gravação de áudio",
-        kTCCServiceMediaLibrary: "O aplicativo precisa de acesso à biblioteca de mídia para gravação de áudio",
         NSUserNotificationUsageDescription: "Precisamos enviar notificações para manter você informado sobre o status da gravação.",
 
       },
@@ -70,14 +68,11 @@ export default ({ config }) => ({
       },
       permissions: [
         "RECORD_AUDIO",
-        "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_MICROPHONE",
         "WAKE_LOCK",
-        "MODIFY_AUDIO_SETTINGS",
-        "NOTIFICATIONS",
         "POST_NOTIFICATIONS",
       ],
-      usesCleartextTraffic: IS_DEV || IS_PREVIEW,
+      usesCleartextTraffic: false,
       foregroundService: {
         name: "Gravação de Áudio",
         icon: IS_DEV ? "./assets/images/android-adaptive-icon-black.png": "./assets/images/android-adaptive-icon.png",

@@ -4,19 +4,26 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "env": {
+         "EXPO_PUBLIC_APP_VERSION": "1.4.0"
+      }
+    },
     "production": {
+      "extends": "base",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://vocalizeai.app.br/api",
         "EXPO_PUBLIC_API_KEY": "b5694358-82bd-4bf0-81ab-32df891b5f86",
-        "EXPO_PUBLIC_PROJECT_ID": "726feb22-332b-4eff-9bbf-fb4969bd627b"
+        "EXPO_PUBLIC_PROJECT_ID": "77d58605-b504-492e-a756-14a11c9b4265"
       },
       "autoIncrement": true
     },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://istros.app/api-v2",
+        "EXPO_PUBLIC_API_URL": "https://vocalizeai.app.br/dev-api",
         "EXPO_PUBLIC_API_KEY": "21eb8838-1787-40df-916f-3011a86c1b48",
         "EXPO_PUBLIC_PROJECT_ID": "4207591d-1878-448c-b44f-a3d6f6f4fd48",
         "APP_VARIANT": "development"
@@ -26,6 +33,7 @@
       }
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "autoIncrement": true,
       "env": {
