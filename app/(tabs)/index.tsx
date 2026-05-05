@@ -72,6 +72,13 @@ export default function HomeScreen() {
   const handleRecordPress = async () => {
     setIsLoading(true);
 
+    setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+        shouldPlayInBackground: true,
+        allowsBackgroundRecording: true,
+      });
+
     try {
       if (isRecording) { // Se já estiver gravando, pausa
         audioRecorder.pause();

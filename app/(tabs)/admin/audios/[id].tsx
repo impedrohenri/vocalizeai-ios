@@ -27,6 +27,7 @@ import {
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { getParticipantesByUsuario } from "@/services/participanteService";
+import { setAudioModeAsync } from "expo-audio";
 
 export default function AudiosUsuarioScreen() {
   const { id, participanteId, fromScreen, directToAudios } = useLocalSearchParams();
@@ -264,8 +265,18 @@ export default function AudiosUsuarioScreen() {
         return;
       }
 
+      setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: false,
+      });
+
       if (soundRef.current) {
         await stopAudioPlayback();
+
+        await setAudioModeAsync({ 
+          playsInSilentMode: true,
+          allowsRecording: true,
+        });
       }
 
       const audioUrl = await getAudioPlayUrl(audioId);
@@ -285,7 +296,22 @@ export default function AudiosUsuarioScreen() {
       await newSound.playAsync();
       soundRef.current = newSound;
       setPlayingAudioId(audioId);
+
+      newSound.setOnPlaybackStatusUpdate(async (status) => {
+        if (status.isLoaded && status.didJustFinish){
+          await setAudioModeAsync({ 
+            playsInSilentMode: true,
+            allowsRecording: true,
+          })
+        }
+      });
+
     } catch (error) {
+      setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+      });
+
       Toast.show({
         type: "error",
         text1: "Erro ao reproduzir áudio",

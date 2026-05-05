@@ -34,6 +34,10 @@ import Toast from "react-native-toast-message";
 import { formatTime } from "@/utils/formatTime";
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import {
+  setAudioModeAsync,
+} from 'expo-audio';
+
 export default function AudiosScreen() {
   const [recordings, setRecordings] = useState<AudioRecording[]>([]);
   const [filteredRecordings, setFilteredRecordings] = useState<
@@ -303,22 +307,28 @@ export default function AudiosScreen() {
       if (isRecording){
         throw new Error("O microfone está sendo usado");
       }
-
-      Audio.setAudioModeAsync({
-        allowsRecordingIOS: false
-      });
-
+      
+      // Se já estiver tocando, para a reprodução      
       if (soundRef.current) {
         await soundRef.current.stopAsync();
         await soundRef.current.unloadAsync();
         soundRef.current = null;
-
+        await setAudioModeAsync({ 
+          playsInSilentMode: true,
+          allowsRecording: true,
+        })
+        
         if (playingUri === uri) {
           setPlayingUri(null);
           return;
         }
       }
-
+      
+      setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: false,
+      });
+      
       const properUri = uri.startsWith("file://") ? uri : `file://${uri}`;
 
       try {
@@ -377,14 +387,20 @@ export default function AudiosScreen() {
 
         soundObject.setOnPlaybackStatusUpdate(async (status) => {
           if (status.isLoaded && status.didJustFinish){
-            await Audio.setAudioModeAsync({ allowsRecordingIOS: true })
+            await setAudioModeAsync({ 
+              playsInSilentMode: true,
+              allowsRecording: true,
+            })
           }     
         });
 
         soundRef.current = soundObject;
         setPlayingUri(uri);
       } catch (error) {
-        await Audio.setAudioModeAsync({ allowsRecordingIOS: true })
+        await setAudioModeAsync({
+            playsInSilentMode: true,
+            allowsRecording: true,
+         })
 
         Toast.show({
           text1: error instanceof Error ? error.message : "Erro",
