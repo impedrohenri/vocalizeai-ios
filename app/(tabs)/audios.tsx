@@ -5,6 +5,7 @@ import {
   default as ParticipanteSelector,
 } from "@/components/ParticipanteSelect";
 import VocalizationSelect from "@/components/VocalizationSelect";
+import { RecordingContext } from "@/contexts/RecordingContext";
 import { uploadAudioFile } from "@/services/audioService";
 import { getParticipantesByUsuario } from "@/services/participanteService";
 import { getVocalizacoes } from "@/services/vocalizacoesService";
@@ -16,14 +17,13 @@ import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { Audio } from "expo-av";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -31,6 +31,12 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import { formatTime } from "@/utils/formatTime";
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+import {
+  setAudioModeAsync,
+} from 'expo-audio';
 
 export default function AudiosScreen() {
   const [recordings, setRecordings] = useState<AudioRecording[]>([]);
@@ -73,6 +79,32 @@ export default function AudiosScreen() {
     text: string;
   }>({ type: "none", text: "" });
   const [isConnected, setIsConnected] = useState(true);
+
+  const {isRecording} = useContext(RecordingContext);
+  const insets = useSafeAreaInsets();
+
+
+  // Essas funções controlam a exibição dos modais para o iOS 
+  const handleOpenDeleteModal = () => {
+    setShowOptionsModal(false);
+    setShowConfirmDeleteModal(true);
+  };
+
+  const handleCancelDelete = () => {
+    setShowConfirmDeleteModal(false);
+    setShowOptionsModal(true);
+  };
+
+  const handleOpenUpdateModal = () => {
+    setShowOptionsModal(false);
+    setShowUpdateConfirmModal(true);
+  };
+
+  const handleCancelUpdate = () => {
+    setShowUpdateConfirmModal(false);
+    setShowOptionsModal(true);
+  };
+
 
   const showModalMessage = (
     type: "success" | "error" | "info",
@@ -223,14 +255,6 @@ export default function AudiosScreen() {
     return participante ? participante.nome : `Participante ${participanteId}`;
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
-  };
-
   async function handleDeleteAllAudios() {
     if (recordings.length === 0) {
       Toast.show({
@@ -280,17 +304,31 @@ export default function AudiosScreen() {
 
   async function handlePlayAudio(uri: string) {
     try {
+      if (isRecording){
+        throw new Error("O microfone está sendo usado");
+      }
+      
+      // Se já estiver tocando, para a reprodução      
       if (soundRef.current) {
         await soundRef.current.stopAsync();
         await soundRef.current.unloadAsync();
         soundRef.current = null;
-
+        await setAudioModeAsync({ 
+          playsInSilentMode: true,
+          allowsRecording: true,
+        })
+        
         if (playingUri === uri) {
           setPlayingUri(null);
           return;
         }
       }
-
+      
+      setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: false,
+      });
+      
       const properUri = uri.startsWith("file://") ? uri : `file://${uri}`;
 
       try {
@@ -347,9 +385,23 @@ export default function AudiosScreen() {
 
         await soundObject.playAsync();
 
+        soundObject.setOnPlaybackStatusUpdate(async (status) => {
+          if (status.isLoaded && status.didJustFinish){
+            await setAudioModeAsync({ 
+              playsInSilentMode: true,
+              allowsRecording: true,
+            })
+          }     
+        });
+
         soundRef.current = soundObject;
         setPlayingUri(uri);
       } catch (error) {
+        await setAudioModeAsync({
+            playsInSilentMode: true,
+            allowsRecording: true,
+         })
+
         Toast.show({
           text1: error instanceof Error ? error.message : "Erro",
           text2: "Erro ao carregar áudio",
@@ -366,10 +418,10 @@ export default function AudiosScreen() {
           );
         }
       }
-    } catch (error) {
+    } catch (error: Error | any) {
       setPlayingUri(null);
       Toast.show({
-        text1: error instanceof Error ? error.message : "Erro",
+        text1: error instanceof Error ? JSON.stringify(error.message) : "Erro",
         text2: "Erro ao reproduzir áudio",
         type: "error",
       });
@@ -405,87 +457,12 @@ export default function AudiosScreen() {
         await stopAudioPlayback();
       }
 
-      const uriTimestamp = recording.uri.match(/recording_(\d+)/);
-      const timestampInFilename = uriTimestamp ? uriTimestamp[1] : null;
-
       let deleted = false;
 
       try {
-        const audioDir = await FileOperations.getAudioDirectory();
-
-        if (Platform.OS === "android") {
-          try {
-            let matchingFile = null;
-
-            if (timestampInFilename) {
-              const pattern = new RegExp(
-                `recording_${timestampInFilename.substring(0, 8)}`
-              );
-
-              const dirInfo = await FileSystem.getInfoAsync(audioDir);
-
-              if (dirInfo.exists && dirInfo.isDirectory) {
-                const files = await FileSystem.readDirectoryAsync(audioDir);
-
-                for (const file of files) {
-                  if (pattern.test(file)) {
-                    matchingFile = file;
-                    break;
-                  }
-                }
-              }
-            }
-
-            if (matchingFile) {
-              const filePath = `${audioDir}/${matchingFile}`;
-
-              try {
-                deleted = await FileOperations.deleteFile(filePath);
-
-                if (!deleted) {
-                  await FileSystem.deleteAsync(filePath, { idempotent: true });
-                  deleted = true;
-                }
-              } catch (fileError) {
-                Toast.show({
-                  text1:
-                    fileError instanceof Error ? fileError.message : "Erro",
-                  text2: "Erro ao excluir arquivo específico",
-                  type: "error",
-                });
-              }
-            } else {
-              Toast.show({
-                text1: "Erro",
-                text2: "Não foi possível encontrar o arquivo de áudio",
-                type: "error",
-              });
-            }
-          } catch (error) {
-            Toast.show({
-              text1: error instanceof Error ? error.message : "Erro",
-              text2: "Erro ao acessar o diretório de áudio",
-              type: "error",
-            });
-          }
-        } else {
-          try {
-            await FileSystem.deleteAsync(recording.uri, { idempotent: true });
-            deleted = true;
-          } catch (error) {
-            Toast.show({
-              text1: error instanceof Error ? error.message : "Erro",
-              text2: "Erro ao excluir o arquivo de áudio",
-              type: "error",
-            });
-          }
-        }
+        deleted = await FileOperations.deleteFile(recording.uri);
       } catch (error) {
-        Toast.show({
-          text1: error instanceof Error ? error.message : "Erro",
-          text2: "Erro ao acessar o diretório de áudio",
-          type: "error",
-        });
+         console.error(error);
       }
 
       const updated = recordings.filter(
@@ -494,7 +471,7 @@ export default function AudiosScreen() {
 
       setRecordings(updated);
       await AsyncStorage.setItem("recordings", JSON.stringify(updated));
-      setShowOptionsModal(false);
+      
       setShowConfirmDeleteModal(false);
       setSelectedRecording(null);
 
@@ -551,7 +528,7 @@ export default function AudiosScreen() {
       });
 
       setShowUpdateConfirmModal(false);
-      setShowOptionsModal(false);
+  
     } catch (error) {
       Toast.show({
         text1: error instanceof Error ? error.message : "Erro",
@@ -602,9 +579,10 @@ export default function AudiosScreen() {
       }
 
       await uploadAudioFile(
-        idVocalizacao,
         fileUri,
-        selectedAudioParticipanteId
+        selectedAudioParticipanteId,
+        `recording_${Date.now()}.wav`,
+        idVocalizacao
       );
 
       if (selectedRecording) {
@@ -686,9 +664,10 @@ export default function AudiosScreen() {
           }
 
           await uploadAudioFile(
-            recording.vocalizationId,
             recording.uri,
-            recording.participanteId
+            recording.participanteId,
+            `recording_${recording.timestamp}.wav`,
+            recording.vocalizationId
           );
 
           successCount++;
@@ -1001,14 +980,14 @@ export default function AudiosScreen() {
 
       <ConfirmationModal
         visible={showUpdateConfirmModal}
-        onCancel={() => setShowUpdateConfirmModal(false)}
+        onCancel={handleCancelUpdate}
         onConfirm={handleUpdateVocalizationId}
         message="Confirma a atualização dos dados do áudio?"
       />
 
       <ConfirmationModal
         visible={showConfirmDeleteModal}
-        onCancel={() => setShowConfirmDeleteModal(false)}
+        onCancel={handleCancelDelete}
         onConfirm={() =>
           selectedRecording && handleDeleteAudio(selectedRecording)
         }
@@ -1045,7 +1024,12 @@ export default function AudiosScreen() {
         onRequestClose={() => setShowOptionsModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View 
+            style={[
+              styles.modalContent,
+              { paddingBottom: 24 + insets.bottom }
+            ]}
+          >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Dados da Gravação</Text>
               <TouchableOpacity
@@ -1090,7 +1074,7 @@ export default function AudiosScreen() {
                     color="#666"
                   />
                   <Text style={styles.detailText} numberOfLines={1}>
-                    {selectedRecording.uri.split("/").pop()?.split("_")[1] ||
+                    {selectedRecording.uri.split("_").pop() ||
                       "Gravação"}
                   </Text>
                 </View>
@@ -1193,7 +1177,7 @@ export default function AudiosScreen() {
             <View style={styles.modalActions}>
               <ButtonCustom
                 title="Atualizar Dados da Gravação"
-                onPress={() => setShowUpdateConfirmModal(true)}
+                onPress={handleOpenUpdateModal}
                 color="#2196F3"
                 style={styles.actionButton}
                 icon={<MaterialIcons name="edit" size={20} color="#FFF" />}
@@ -1223,7 +1207,7 @@ export default function AudiosScreen() {
 
               <ButtonCustom
                 title="Excluir Áudio"
-                onPress={() => setShowConfirmDeleteModal(true)}
+                onPress={handleOpenDeleteModal}
                 color="#F44336"
                 style={styles.actionButton}
                 icon={<MaterialIcons name="delete" size={20} color="#FFF" />}

@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   FlatList,
   Modal,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -22,6 +23,7 @@ import {
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { UsuarioUpdate } from "../../../types/UsuarioUpdate";
+import { api } from "@/services/api";
 
 export default function UsuariosScreen() {
   const [usuarios, setUsuarios] = useState<any[]>([]);
@@ -187,7 +189,33 @@ export default function UsuariosScreen() {
     }
   };
 
-  const renderUsuario = ({ item }: { item: Usuario }) => (
+  const permitirAcesso = async (id: number) => {
+    try {
+      const resp = await api.post(`/usuarios/${id}/permitir-ou-revogar-acesso`);
+      if (resp.data.acesso_permitido) {
+        Toast.show({
+          type: "success",
+          text1: "Sucesso",
+          text2: "Acesso permitido para o usuário!",
+        });
+      } else if (!resp.data.acesso_permitido) {
+        Toast.show({
+          type: "info",
+          text1: "Acesso revogado",
+          text2: "O acesso do usuário foi revogado.",
+        });
+      }
+      fetchUsuarios();
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: error instanceof Error ? error.message : "Erro",
+        text2: "Erro ao permitir acesso para o usuário",
+      });
+    }
+  }
+
+  const renderUsuario = ({ item }: { item: Usuario & { acesso_permitido: boolean, codigo_convite: string } }) => (
     <View style={styles.userContainer}>
       <TouchableOpacity
         style={styles.userInfoContainer}
@@ -231,6 +259,32 @@ export default function UsuariosScreen() {
             <MaterialIcons name="headset" size={20} color="#666" />
             <Text style={styles.detailText}>Toque para ver áudios</Text>
           </View>
+
+          
+            {(item.acesso_permitido || item.codigo_convite) && 
+              <View style={styles.detailRow}>
+                <MaterialIcons name="confirmation-number" size={20} color="#666" />
+                <Text style={styles.detailText}>
+                  {item.codigo_convite ? `Convite: ${item.codigo_convite}` : 'Aprovado manualmente'}
+                </Text>
+              </View>
+            }
+
+          <View >
+            <Pressable onPress={() => {permitirAcesso(item.id)}}style={styles.detailRow}>
+  
+              {item.acesso_permitido ? 
+              <>
+              <MaterialIcons name="lock-open" size={20} color="#666" /> 
+              <Text style={{color: "#c00"}}>Revogar acesso</Text>
+              </> : 
+              <>
+              <MaterialIcons name="lock" size={20} color="#666" />
+              <Text style={{color: "#2196F3"}}>Permitir Acesso</Text>
+              </>}
+            </Pressable>
+          </View>
+
         </View>
       </TouchableOpacity>
     </View>

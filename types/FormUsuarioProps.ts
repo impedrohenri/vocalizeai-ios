@@ -1,4 +1,6 @@
 export interface FormUsuarioProps {
+  codigoConvite: string;
+  setCodigoConvite: (value: string) => void;
   nome: string;
   setNome: (value: string) => void;
   email: string;

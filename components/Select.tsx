@@ -1,8 +1,7 @@
 import { SelectProps } from "@/types/SelectProps";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, Text, View, Modal, TouchableOpacity, FlatList, TouchableWithoutFeedback } from "react-native";
 
 export default function Select({
   label,
@@ -13,34 +12,36 @@ export default function Select({
   leftIcon,
   placeholder,
 }: SelectProps) {
+  const [isModalVisible, setModalVisible] = useState(false);
+
   const pickerContainerStyle = [styles.pickerContainer, style];
 
   const pickerOptions = placeholder
     ? [{ label: placeholder, value: "" }, ...options]
     : options;
 
+  const selectedOption = pickerOptions.find((o) => o.value === selectedValue);
+  const displayLabel = selectedOption?.label ?? placeholder ?? "Selecione...";
+
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      <View style={pickerContainerStyle}>
+
+      <TouchableOpacity
+        style={pickerContainerStyle}
+        activeOpacity={0.7}
+        onPress={() => setModalVisible(true)}
+      >
         {leftIcon && <View style={styles.iconContainer}>{leftIcon}</View>}
         <View style={styles.pickerWrapper}>
-          <Picker
-            selectedValue={selectedValue}
-            onValueChange={onValueChange}
-            style={styles.picker}
-            dropdownIconColor="#666"
-            itemStyle={styles.pickerItem}
+          <Text
+            style={[
+              styles.triggerText,
+              (selectedValue === "" || selectedValue == null) && { color: "#999" },
+            ]}
           >
-            {pickerOptions.map((option) => (
-              <Picker.Item
-                key={option.value}
-                label={option.label}
-                value={option.value}
-                color={option.value === "" ? "#999" : "#424242"}
-              />
-            ))}
-          </Picker>
+            {displayLabel}
+          </Text>
           <MaterialIcons
             name="arrow-drop-down"
             size={24}
@@ -48,7 +49,61 @@ export default function Select({
             style={styles.dropdownIcon}
           />
         </View>
-      </View>
+      </TouchableOpacity>
+
+      <Modal
+        visible={isModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPressOut={() => setModalVisible(false)}
+        >
+          <TouchableWithoutFeedback>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{label}</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <MaterialIcons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+
+              <FlatList
+                data={pickerOptions}
+                keyExtractor={(item, index) =>
+                  item.value != null ? String(item.value) : `fallback-key-${index}`
+                }
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.optionItem}
+                    onPress={() => {
+                      onValueChange(item.value);
+                      setModalVisible(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        item.value === selectedValue && styles.optionTextSelected,
+                        item.value === "" && { color: "#999" },
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+
+                    {item.value === selectedValue && item.value !== "" && (
+                      <MaterialIcons name="check" size={20} color="#007AFF" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -79,23 +134,61 @@ const styles = StyleSheet.create({
     alignItems: "center",
     position: "relative",
   },
-  picker: {
+  triggerText: {
     flex: 1,
-    height: 56,
+    fontSize: 16,
     color: "#424242",
     paddingLeft: 12,
-  },
-  pickerItem: {
-    paddingLeft: 20,
-    fontSize: 16,
   },
   dropdownIcon: {
     position: "absolute",
     right: 12,
-    pointerEvents: "none",
   },
   iconContainer: {
     paddingLeft: 16,
     paddingRight: 8,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    maxHeight: "80%",
+    overflow: "hidden",
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#424242",
+  },
+  optionItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f5f5f5",
+  },
+  optionText: {
+    fontSize: 16,
+    color: "#424242",
+  },
+  optionTextSelected: {
+    fontWeight: "bold",
+    color: "#007AFF",
   },
 });

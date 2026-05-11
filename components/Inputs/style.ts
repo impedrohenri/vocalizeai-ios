@@ -20,6 +20,7 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     minHeight: 56,
     flex: 1,
+    color: "#222222",
   },
   inputWithIcon: {
     paddingLeft: 8,
@@ -40,6 +41,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     fontSize: 16,
+    color: "#222222",
   },
   icon: {
     padding: 10,

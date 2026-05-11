@@ -17,13 +17,18 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function VocalizacoesScreen() {
   const [vocalizacoes, setVocalizacoes] = useState<Vocalizacao[]>([]);
@@ -37,6 +42,8 @@ export default function VocalizacoesScreen() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(true);
+
+    const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -80,10 +87,10 @@ export default function VocalizacoesScreen() {
     }
   }, []);
 
-  const fetchVocalizacoes = useCallback(async () => {
+  const fetchVocalizacoes = useCallback(async (forceRefresh: boolean = false) => {
     setIsLoading(true);
     try {
-      const vocalizacaosList = await getVocalizacoes();
+      const vocalizacaosList = await getVocalizacoes(forceRefresh);
       setVocalizacoes(vocalizacaosList);
     } catch (error: any) {
       Toast.show({
@@ -99,7 +106,7 @@ export default function VocalizacoesScreen() {
   useFocusEffect(
     useCallback(() => {
       checkAdminRole();
-      fetchVocalizacoes();
+      fetchVocalizacoes(true);
     }, [])
   );
 
@@ -183,7 +190,7 @@ export default function VocalizacoesScreen() {
       }
 
       setShowModal(false);
-      fetchVocalizacoes();
+      fetchVocalizacoes(true);
     } catch (error: any) {
       Toast.show({
         type: "error",
@@ -218,7 +225,7 @@ export default function VocalizacoesScreen() {
       });
 
       setShowConfirmModal(false);
-      fetchVocalizacoes();
+      fetchVocalizacoes(true);
     } catch (error: any) {
       Toast.show({
         type: "error",
@@ -324,52 +331,64 @@ export default function VocalizacoesScreen() {
         animationType="slide"
         onRequestClose={() => setShowModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {selectedVocalizacao
-                  ? "Editar Rótulo de Vocalização"
-                  : "Adicionar Rótulo de Vocalização"}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowModal(false)}
-                style={styles.modalClose}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalOverlay}>
+              <View
+                style={[
+                  styles.modalContent,
+                  { paddingBottom: 24 + insets.bottom }
+                 ]}
               >
-                <MaterialIcons name="close" size={24} color="#666" />
-              </TouchableOpacity>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>
+                    {selectedVocalizacao
+                      ? "Editar Rótulo de Vocalização"
+                      : "Adicionar Rótulo de Vocalização"}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setShowModal(false)}
+                    style={styles.modalClose}
+                  >
+                    <MaterialIcons name="close" size={24} color="#666" />
+                  </TouchableOpacity>
+                </View>
+
+                <Input
+                  label="Rótulo"
+                  maxLength={50}
+                  showCharacterCount={true}
+                  value={nome}
+                  onChangeText={setNome}
+                  placeholder="Digite o rótulo da vocalização"
+                  editable={!isLoading}
+                />
+
+                <Input
+                  label="Descrição"
+                  value={descricao}
+                  onChangeText={setDescricao}
+                  multiline
+                  style={styles.descriptionInput}
+                  placeholder="Digite a descrição do rótulo da vocalização"
+                  editable={!isLoading}
+                />
+
+                <View style={styles.modalActions}>
+                  <ButtonCustom
+                    title="Salvar"
+                    onPress={handleSave}
+                    icon={<MaterialIcons name="save" size={20} color="#FFF" />}
+                    disabled={isLoading}
+                  />
+                </View>
+              </View>
             </View>
-
-            <Input
-              label="Rótulo"
-              maxLength={50}
-              showCharacterCount={true}
-              value={nome}
-              onChangeText={setNome}
-              placeholder="Digite o rótulo da vocalização"
-              editable={!isLoading}
-            />
-
-            <Input
-              label="Descrição"
-              value={descricao}
-              onChangeText={setDescricao}
-              multiline
-              style={styles.descriptionInput}
-              placeholder="Digite a descrição do rótulo da vocalização"
-              editable={!isLoading}
-            />
-
-            <View style={styles.modalActions}>
-              <ButtonCustom
-                title="Salvar"
-                onPress={handleSave}
-                icon={<MaterialIcons name="save" size={20} color="#FFF" />}
-                disabled={isLoading}
-              />
-            </View>
-          </View>
-        </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
 
       <ConfirmationModal

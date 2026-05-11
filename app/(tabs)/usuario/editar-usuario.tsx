@@ -1,5 +1,6 @@
 import ButtonCustom from "@/components/Button";
 import ConfirmationModal from "@/components/ConfirmationModal";
+import DeleteAccountModal from "@/components/DeleteAccountModal";
 import FormUsuario from "@/components/FormUsuario";
 import {
   confirmRegistration,
@@ -16,6 +17,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
@@ -35,6 +37,8 @@ export default function EditarUsuarioScreen() {
   const [emailOriginal, setEmailOriginal] = useState("");
   const [verificationError, setVerificationError] = useState(false);
   const router = useRouter();
+
+  const [isDeleteAccountModalVisible, setIsDeleteAccountModalVisible] = useState(false)
 
   const loadUserData = useCallback(async () => {
     setIsLoading(true);
@@ -60,6 +64,10 @@ export default function EditarUsuarioScreen() {
       loadUserData();
     }, [loadUserData])
   );
+
+  const handleDeleteAccout = () => {
+    
+  }
 
   const handleEmailChange = (text: string) => {
     setEmail(text);
@@ -282,6 +290,13 @@ export default function EditarUsuarioScreen() {
         <View style={styles.header}>
           <MaterialIcons name="person" size={40} color="#2196F3" />
           <Text style={styles.title}>Editar Perfil</Text>
+          <TouchableOpacity
+            style={styles.deleteAccountButton}
+            onPress={() => setIsDeleteAccountModalVisible(true)}
+          >
+            <MaterialIcons name="delete" size={20} color="#D32F2F" />
+            <Text style={styles.deleteAccountText}>Excluir Conta</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.card}>
@@ -359,6 +374,11 @@ export default function EditarUsuarioScreen() {
         errorMessage="Código de verificação inválido"
         isLoading={isVerificationLoading}
       />
+
+      <DeleteAccountModal
+        isVisible={isDeleteAccountModalVisible}
+        setIsVisible={setIsDeleteAccountModalVisible}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -398,6 +418,21 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#212121",
     letterSpacing: 0.25,
+  },
+  deleteAccountButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 8,
+    backgroundColor: "#FFF5F5",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  deleteAccountText: {
+    color: "#D32F2F",
+    fontSize: 16,
+    fontWeight: "500",
   },
   card: {
     backgroundColor: "#FFFFFF",

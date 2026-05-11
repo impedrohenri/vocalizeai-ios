@@ -1,15 +1,21 @@
-import { getExpirationTime, updateToken } from "@/services/authService";
+import { isAuthenticated } from "@/services/authService";
 import { getParticipantesByUsuario } from "@/services/participanteService";
 import { getUser } from "@/services/usuarioService";
+import { checkAndClearOldCache } from "@/services/util";
 import { getVocalizacoes } from "@/services/vocalizacoesService";
+import notificationService from "@/services/notificationService";
 import MaskedView from "@react-native-masked-view/masked-view";
 import * as Font from "expo-font";
 import { Slot, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import LinearGradient from "react-native-linear-gradient";
+import {LinearGradient} from "expo-linear-gradient";
 import Toast from "react-native-toast-message";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import { RecordingContextProvider } from "@/contexts/RecordingContext";
+import { api } from "@/services/api";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,33 +48,42 @@ export default function RootLayout() {
         await getParticipantesByUsuario(userId);
       }
       await getVocalizacoes();
-    } catch (error) {}
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: error instanceof Error ? error.message : "Erro",
+        text2: "Por favor, tente novamente mais tarde.",
+      });
+    }
   };
 
   const checkToken = async () => {
     try {
       await loadFonts();
+      try {
+        await checkAndClearOldCache();
+      } catch {}
 
-      const now = Date.now();
-      const expirationTime = await getExpirationTime();
+      notificationService.initialize().catch(() => {});
 
-      if (expirationTime > now) {
+      let authenticated = false;
+      try {
+        authenticated = await isAuthenticated();
+      } catch {
+        authenticated = false;
+      }
+
+      if (authenticated) {
         router.replace("/(tabs)");
+        loadInitialData();
       } else {
-        await updateToken();
-        const newExpirationTime = await getExpirationTime();
-
-        if (newExpirationTime > now) {
-          router.replace("/(tabs)");
-        } else {
-          router.replace("/auth/login");
-        }
+        router.replace("/auth/login");
       }
     } catch (error) {
       Toast.show({
         type: "error",
-        text1: "Erro ao verificar token",
-        text2: "Por favor, faça login novamente",
+        text1: error instanceof Error ? error.message : "Erro",
+        text2: "Redirecionando para login",
       });
       router.replace("/auth/login");
     } finally {
@@ -79,13 +94,43 @@ export default function RootLayout() {
     }
   };
 
+  const checkApiVersionCompatibility = async () => {
+    try {
+      await api.post("/version/check", process.env.EXPO_PUBLIC_APP_VERSION);
+      
+    } catch (error: any) {
+      const status = error?.response?.status;
+
+      if (status === 426) {
+        router.replace("/version/atualizar-app");
+      }
+
+      Toast.show({
+        type: "error",
+        text1: error instanceof Error ? error.message : "Erro",
+        text2: error.response?.data?.detail?.message || "Erro ao verificar versão do aplicativo.",
+      });
+    }
+  };
+
   useEffect(() => {
-    checkToken();
-    loadInitialData();
+    const initApp = async () => {
+      await checkToken();
+      await checkApiVersionCompatibility();
+    };
+    initApp();
+    const failSafe = setTimeout(() => {
+      if (isSplashVisible) {
+        setIsSplashVisible(false);
+        SplashScreen.hideAsync().catch(() => void 0);
+      }
+    }, 5000);
+    return () => clearTimeout(failSafe);
   }, []);
 
   return (
-    <View style={{ flex: 1 }}>
+    <SafeAreaProvider>
+      <StatusBar style="dark" />
       {isSplashVisible ? (
         <View style={styles.splashContainer}>
           <MaskedView
@@ -133,9 +178,13 @@ export default function RootLayout() {
           />
         </View>
       ) : null}
-      <Slot />
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F5F5" }} edges={["top"]}>
+        <RecordingContextProvider>
+          <Slot />
+        </RecordingContextProvider>
+      </SafeAreaView>
       <Toast visibilityTime={3000} position="top" />
-    </View>
+    </SafeAreaProvider>
   );
 }
 

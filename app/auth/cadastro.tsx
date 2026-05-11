@@ -23,6 +23,7 @@ import {
 import Toast from "react-native-toast-message";
 
 export default function CadastroUsuarioScreen() {
+  const [codigoConvite, setCodigoConvite] = useState("");
   const [nome, setNome] = useState("");
   const [celular, setCelular] = useState("");
   const [email, setEmail] = useState("");
@@ -126,6 +127,7 @@ export default function CadastroUsuarioScreen() {
     setIsLoading(true);
     try {
       const isRegistered = await register(
+        codigoConvite,
         nome,
         email,
         celular,
@@ -172,9 +174,7 @@ export default function CadastroUsuarioScreen() {
       setIsModalVisible(false);
 
       const loginResult = await doLogin(email, senha);
-      if (loginResult === "success") {
-        router.push("/auth/cadastro-participante");
-      } else {
+      if (loginResult !== "success") {
         router.push("/auth/login");
       }
     } catch (error: any) {
@@ -235,6 +235,8 @@ export default function CadastroUsuarioScreen() {
             <Text style={styles.sectionTitle}>Informações Pessoais</Text>
 
             <FormUsuario
+              codigoConvite={codigoConvite}
+              setCodigoConvite={setCodigoConvite}
               nome={nome}
               setNome={setNome}
               email={email}

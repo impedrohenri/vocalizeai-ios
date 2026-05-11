@@ -6,20 +6,23 @@ import {
   confirmRegistration,
   doLogin,
   sendConfirmationCode,
+  hasSavedCredentials,
 } from "@/services/authService";
 import { validarEmail } from "@/services/usuarioService";
 import { MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Linking,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from "react-native";
-import LinearGradient from "react-native-linear-gradient";
+import {LinearGradient} from "expo-linear-gradient";
 import Toast from "react-native-toast-message";
 
 export default function LoginScreen() {
@@ -28,6 +31,31 @@ export default function LoginScreen() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [codigoConfirmacao, setCodigoConfirmacao] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+
+  useEffect(() => {
+    loadSavedCredentials();
+  }, []);
+
+  const loadSavedCredentials = async () => {
+    try {
+      const hasCredentials = await hasSavedCredentials();
+      if (hasCredentials) {
+        const savedEmail = await AsyncStorage.getItem("saved_email");
+        const savedPassword = await AsyncStorage.getItem("saved_password");
+
+        if (savedEmail) setEmail(savedEmail);
+        if (savedPassword) setPassword(savedPassword);
+        setRememberMe(true);
+      }
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: error instanceof Error ? error.message : "Erro",
+        text2: "Por favor, tente novamente mais tarde.",
+      });
+    }
+  };
 
   const handleEmailChange = (text: string) => {
     setEmail(text);
@@ -60,10 +88,8 @@ export default function LoginScreen() {
     }
 
     try {
-      const loginStatus = await doLogin(email, password);
-      if (loginStatus === "success") {
-        router.replace("/(tabs)");
-      } else if (loginStatus === "unverified") {
+      const loginStatus = await doLogin(email, password, rememberMe);
+      if (loginStatus === "unverified") {
         setIsModalVisible(true);
       }
     } catch (error: any) {
@@ -85,10 +111,7 @@ export default function LoginScreen() {
         text2: "Você já pode acessar o aplicativo.",
       });
       setIsModalVisible(false);
-      const loginStatus = await doLogin(email, password);
-      if (loginStatus === "success") {
-        router.replace("/(tabs)");
-      }
+      await doLogin(email, password);
     } catch (error: any) {
       Toast.show({
         type: "error",
@@ -158,7 +181,6 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               leftIcon={<MaterialIcons name="lock" size={20} color="#666" />}
             />
-
             <ButtonCustom
               title="Esqueci minha senha"
               variant="link"
@@ -189,12 +211,10 @@ export default function LoginScreen() {
           <ButtonCustom
             title="Conheça o nosso projeto"
             variant="link"
-            onPress={() =>
-              Linking.openURL("https://vocalizeai.app.br")
-            }
+            onPress={() => Linking.openURL("https://vocalizeai.app.br")}
           />
           <Text style={{ textAlign: "center", margin: 8, height: 54 }}>
-            v.1.1.1
+            v{process.env.EXPO_PUBLIC_APP_VERSION}
           </Text>
         </View>
       </ScrollView>
