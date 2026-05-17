@@ -20,6 +20,7 @@ import {
 import Timer from "@/components/Timer";
 import SaveAudioModal from "@/components/SaveAudioModal";
 import { RecordingContext } from "@/contexts/RecordingContext";
+import SelectExternalAudio from "@/components/SelectExternalAudio";
 
 export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +68,6 @@ export default function HomeScreen() {
     setIsPaused(!recorderState.isRecording && recorderState.canRecord)
     setRecordingTime(recorderState.durationMillis)
   }, [recorderState])
-
 
   const handleRecordPress = async () => {
     setIsLoading(true);
@@ -118,6 +118,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
+      <SelectExternalAudio />
       <Timer 
         isRecording={isRecording} 
         isPaused={isPaused} 

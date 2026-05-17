@@ -8,6 +8,7 @@ import { Vocalizacao } from '@/types/Vocalizacao'
 import ParticipanteSelector from '@/components/ParticipanteSelect'
 import { Dispatch, SetStateAction, useEffect, useState } from 'react'
 import {
+  AudioPlayer,
   AudioRecorder
 } from 'expo-audio';
 import { getVocalizacoes } from '@/services/vocalizacoesService'
@@ -17,10 +18,13 @@ import { File } from "expo-file-system";
 import FileOperations from '@/utils/FileOperations'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
+import { formatTime } from '@/utils/formatTime'
 
 
 interface ISaveAudioModalProps {
-  recording: AudioRecorder | null;
+  recording?: AudioRecorder | null;
+  externalAudio?: AudioPlayer | null;
+  externalAudioFile?: { uri: string };
   showSaveAudioModal: boolean;
   setShowSaveAudioModal: Dispatch<SetStateAction<boolean>>;
   recordingTime: number;
@@ -28,6 +32,8 @@ interface ISaveAudioModalProps {
 
 export default function SaveAudioModal({
   recording,
+  externalAudio,
+  externalAudioFile,
   showSaveAudioModal, setShowSaveAudioModal,
   recordingTime }: ISaveAudioModalProps) {
 
@@ -212,6 +218,92 @@ export default function SaveAudioModal({
     }
   };
 
+  const handleSaveExternalAudio = async () => {
+    if (!externalAudio) {
+      Toast.show({
+        type: "error",
+        text1: "Nenhum áudio selecionado",
+        text2: "Não foi encontrado áudio para salvar.",
+      });
+      return;
+    }
+
+    try {
+      const uri = externalAudioFile?.uri || "";
+
+      if (!uri) {
+        throw new Error("URI do áudio não encontrada.");
+      }
+
+      if (!uri.startsWith("file://")) {
+        throw new Error("URI do áudio inválida.");
+      }
+
+      // Verificação física do arquivo
+      const tempFile = new File(uri);
+      const fileInfo = tempFile.info();
+
+      if (!fileInfo.exists) {
+        throw new Error("Arquivo de áudio não existe.");
+      }
+
+      if (!fileInfo.size || fileInfo.size < 50) {
+        throw new Error("Arquivo de áudio inválido ou muito pequeno.");
+      }
+
+      const audioDir = await FileOperations.getAudioDirectory();
+      const fileName = `recording_${Date.now()}.m4a`;
+      const newUri = `${audioDir}${fileName}`;
+      const finalFile = new File(newUri)
+      console.log(">>>>>>", newUri)
+      console.log(">>>>>> tempo:", externalAudio?.duration)
+
+      try {
+        tempFile.move(finalFile);
+      } catch (e) {
+        throw new Error("Erro ao mover arquivo de áudio.");
+      }
+
+      const vocalizationName =
+        vocalizations.find(v => v.id === selectedVocalizationId)?.nome ??
+        "Desconhecido";
+
+      const existingRecordings = await AsyncStorage.getItem("recordings");
+      const recordings = existingRecordings
+        ? JSON.parse(existingRecordings)
+        : [];
+
+      recordings.push({
+        uri: newUri,
+        timestamp: Date.now(),
+        duration: externalAudio.duration * 1000,
+        vocalizationId: selectedVocalizationId,
+        vocalizationName,
+        participanteId: selectedParticipanteId,
+        status: "pending",
+      });
+
+      await AsyncStorage.setItem("recordings", JSON.stringify(recordings));
+
+      // Reset de estados
+      setShowSaveAudioModal(false);
+      setTimeout(() => {
+        router.push("/(tabs)/audios");
+      }, 400);
+
+      Toast.show({
+        type: "success",
+        text1: "Gravação salva",
+        text2: "A gravação foi salva com sucesso.",
+      });
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: "Erro ao salvar áudio",
+        text2: error?.message + externalAudioFile?.uri || "Erro desconhecido",
+      });
+    }
+  };
 
 
   return (
@@ -239,6 +331,17 @@ export default function SaveAudioModal({
                 style={styles.modalClose}
               />
             </View>
+            {externalAudio && (
+              <View style={{ marginBottom: 20, marginTop: -16, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <Text style={{ color: "#2196F3"}}>
+                Áudio gravado fora do app.
+              </Text>
+                <Text style={{  color: "#2196F3", fontWeight: "600" }}>
+                  {formatTime(externalAudio.duration * 1000)}
+                </Text>
+              </View>
+                
+            )}
             {loadingParticipantes ? (
               <ActivityIndicator size="large" color="#2196F3" />
             ) : (
@@ -261,7 +364,7 @@ export default function SaveAudioModal({
             <View style={styles.modalActions}>
               <ButtonCustom
                 title="Salvar Gravação"
-                onPress={handleSaveAudio}
+                onPress={recording ? handleSaveAudio : handleSaveExternalAudio}
                 color="#2196F3"
                 style={styles.modalButton}
                 icon={<MaterialIcons name="save" size={20} color="#FFF" />}
