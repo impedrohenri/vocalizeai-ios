@@ -63,6 +63,7 @@ export default function AudiosUsuarioScreen() {
   const fetchUserName = useCallback(async () => {
     if (!userId) return;
 
+    setUserName("...");
     try {
       const userData = await getUserById(Number(userId));
       setUserName(userData?.nome || "Usuário");
@@ -81,6 +82,7 @@ export default function AudiosUsuarioScreen() {
       return;
     }
 
+    setParticipantes([]);
     setLoadingParticipantes(true);
     try {
       const participantesList = await getParticipantesByUsuario(userId);
@@ -101,6 +103,7 @@ export default function AudiosUsuarioScreen() {
       setIsLoading(true);
       setError(null);
   
+      setAudios([]);
       try {
         const audiosList = await listAudiosByParticipante(participanteId);
         setAudios(audiosList);
