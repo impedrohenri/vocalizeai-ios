@@ -61,7 +61,7 @@ export default function UsuariosScreen() {
     setIsLoading(true);
     try {
       const users = await getAllUsers();
-      setUsuarios(users);
+      setUsuarios(users.sort((a: Usuario, b: Usuario) => a.nome.localeCompare(b.nome)));
     } catch (error: any) {
       Toast.show({
         type: "error",
