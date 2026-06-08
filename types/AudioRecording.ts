@@ -1,4 +1,5 @@
 export interface AudioRecording {
+  id?: string;
   uri: string;
   timestamp: number;
   duration: number;
