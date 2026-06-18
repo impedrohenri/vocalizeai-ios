@@ -10,7 +10,7 @@ import {
 import { Usuario } from "@/types/Usuario";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, router } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -36,6 +36,7 @@ export default function UsuariosScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [celularError, setCelularError] = useState("");
+  const [sortOption, setSortOption] = useState<'data' | 'alfabetica'>('data');
 
   const handleEmailChange = (text: string) => {
     setEmail(text);
@@ -61,7 +62,7 @@ export default function UsuariosScreen() {
     setIsLoading(true);
     try {
       const users = await getAllUsers();
-      setUsuarios(users.sort((a: Usuario, b: Usuario) => a.nome.localeCompare(b.nome)));
+      setUsuarios(users);
     } catch (error: any) {
       Toast.show({
         type: "error",
@@ -78,6 +79,21 @@ export default function UsuariosScreen() {
       fetchUsuarios();
     }, [fetchUsuarios])
   );
+
+  const usuariosOrdenados = useMemo(() => {
+    const lista = [...usuarios];
+    
+    if (sortOption === 'alfabetica') {
+      return lista.sort((a, b) => a.nome.localeCompare(b.nome));
+    } else {
+      // Ordenação por data (os mais antigos primeiro)
+      return lista.sort((a, b) => {
+        const dataA = new Date(a.created_at).getTime();
+        const dataB = new Date(b.created_at).getTime();
+        return dataA - dataB;
+      });
+    }
+  }, [usuarios, sortOption]);
 
   const handleEdit = (usuario: UsuarioUpdate) => {
     setSelectedUsuario(usuario);
@@ -215,7 +231,7 @@ export default function UsuariosScreen() {
     }
   }
 
-  const renderUsuario = ({ item }: { item: Usuario & { acesso_permitido: boolean, codigo_convite: string } }) => (
+  const renderUsuario = ({ item }: { item: Usuario & { acesso_permitido: boolean, codigo_convite: string, created_at: string } }) => (
     <View style={styles.userContainer}>
       <TouchableOpacity
         style={styles.userInfoContainer}
@@ -256,6 +272,12 @@ export default function UsuariosScreen() {
             <Text style={styles.detailText}>{item.celular}</Text>
           </View>
           <View style={styles.detailRow}>
+            <MaterialIcons name="event" size={20} color="#666" />
+            <Text style={styles.detailText}>
+              Cadastrado em: {new Date(item.created_at).toLocaleDateString('pt-BR')}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
             <MaterialIcons name="headset" size={20} color="#666" />
             <Text style={styles.detailText}>Toque para ver áudios</Text>
           </View>
@@ -292,8 +314,33 @@ export default function UsuariosScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Container de Filtros de Ordenação */}
+      <View style={styles.sortContainer}>
+        <Text style={styles.sortLabel}>Ordenar por:</Text>
+        <View style={styles.sortButtonsContainer}>
+          <TouchableOpacity 
+            style={[styles.sortButton, sortOption === 'data' && styles.sortButtonActive]}
+            onPress={() => setSortOption('data')}
+          >
+            <MaterialIcons name="access-time" size={16} color={sortOption === 'data' ? '#2196F3' : '#666'} />
+            <Text style={[styles.sortButtonText, sortOption === 'data' && styles.sortButtonTextActive]}>
+              Data
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.sortButton, sortOption === 'alfabetica' && styles.sortButtonActive]}
+            onPress={() => setSortOption('alfabetica')}
+          >
+            <MaterialIcons name="sort-by-alpha" size={16} color={sortOption === 'alfabetica' ? '#2196F3' : '#666'} />
+            <Text style={[styles.sortButtonText, sortOption === 'alfabetica' && styles.sortButtonTextActive]}>
+              A-Z
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <FlatList
-        data={usuarios}
+        data={usuariosOrdenados}
         renderItem={renderUsuario}
         keyExtractor={(usuario) => usuario.id.toString()}
         ListEmptyComponent={
@@ -397,6 +444,51 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
     padding: 20,
   },
+  // --- Novos estilos para o container de ordenação ---
+  sortContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  sortLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  sortButtonsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: 4,
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    gap: 4,
+  },
+  sortButtonActive: {
+    backgroundColor: "#FFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 2,
+  },
+  sortButtonText: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
+  },
+  sortButtonTextActive: {
+    color: "#2196F3",
+    fontWeight: "bold",
+  },
+  // --------------------------------------------------
   listContainer: {
     flexGrow: 1,
     paddingBottom: 20,
