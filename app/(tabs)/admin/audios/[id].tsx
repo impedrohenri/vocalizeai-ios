@@ -14,7 +14,7 @@ import translateVocalization from "@/utils/TranslateVocalization";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -59,6 +59,24 @@ export default function AudiosUsuarioScreen() {
   const [viewMode, setViewMode] = useState<"participantes" | "audios">(
     "participantes"
   );
+  const [sortParticipanteOrder, setSortParticipanteOrder] = useState<"date" | "alphabetical">("date");
+
+  const sortedParticipantes = useMemo(() => {
+  return [...participantes].sort((a, b) => {
+    if (sortParticipanteOrder === "date") {
+      // Ordem de cadastro: mais antigos primeiro (Crescente)
+      // Se quiser os mais novos primeiro, basta inverter para dateB - dateA
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateA - dateB;
+    } else {
+      // Ordem Alfabética (A-Z)
+      const nomeA = a.nome?.toLowerCase() || "";
+      const nomeB = b.nome?.toLowerCase() || "";
+      return nomeA.localeCompare(nomeB);
+    }
+  });
+}, [participantes, sortParticipanteOrder]);
 
   const fetchUserName = useCallback(async () => {
     if (!userId) return;
@@ -519,6 +537,30 @@ export default function AudiosUsuarioScreen() {
     <SafeAreaView style={styles.container}>
       {renderHeader()}
 
+      {viewMode === "participantes" && participantes.length > 0 && !loadingParticipantes && !error && (
+      <View style={styles.sortContainer}>
+        <Text style={styles.sortLabel}>Ordenar por:</Text>
+        <View style={styles.sortButtonsContainer}>
+          <TouchableOpacity
+            style={[styles.sortButton, sortParticipanteOrder === "date" && styles.sortButtonActive]}
+            onPress={() => setSortParticipanteOrder("date")}
+          >
+            <Text style={[styles.sortButtonText, sortParticipanteOrder === "date" && styles.sortButtonTextActive]}>
+              Data
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.sortButton, sortParticipanteOrder === "alphabetical" && styles.sortButtonActive]}
+            onPress={() => setSortParticipanteOrder("alphabetical")}
+          >
+            <Text style={[styles.sortButtonText, sortParticipanteOrder === "alphabetical" && styles.sortButtonTextActive]}>
+              A-Z
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )}
+
       {viewMode === "participantes" ? (
         loadingParticipantes ? (
           <View style={styles.loadingContainer}>
@@ -964,5 +1006,48 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 16,
     marginLeft: 8,
+  },
+  sortContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#f5f5f5",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  sortLabel: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  sortButtonsContainer: {
+    flexDirection: "row",
+    backgroundColor: "#e0e0e0",
+    borderRadius: 8,
+    padding: 2,
+  },
+  sortButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  sortButtonActive: {
+    backgroundColor: "#FFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 2,
+  },
+  sortButtonText: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
+  },
+  sortButtonTextActive: {
+    color: "#2196F3",
+    fontWeight: "bold",
   },
 });
