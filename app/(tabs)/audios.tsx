@@ -136,6 +136,7 @@ export default function AudiosScreen() {
       setLoadingParticipantes(false);
     }
   };
+
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
       setIsConnected(state.isConnected ?? false);
@@ -149,6 +150,7 @@ export default function AudiosScreen() {
       unsubscribe();
     };
   }, []);
+
   useEffect(() => {
     return () => {
       stopAudioPlayback();
@@ -206,16 +208,20 @@ export default function AudiosScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchRecordings();
+      const carregarDadosSincronizados = async () => {
+        const vocs = await fetchVocalizations();
+        await fetchRecordings(vocs);
+      };
+
+      carregarDadosSincronizados();
       loadParticipantes();
-      fetchVocalizations();
       return () => {
         stopAudioPlayback();
       };
     }, [])
   );
 
-  async function fetchRecordings() {
+  async function fetchRecordings(vocalizationsList: Vocalizacao[]) {
     try {
       const userId = await AsyncStorage.getItem("userId");
 
@@ -225,27 +231,31 @@ export default function AudiosScreen() {
 
       const { data } = await api.get(`/audios/usuario/${userId}`);
 
-      const remoteRecordings: AudioRecording[] = data.map((item: any) => ({
-        id: item.id,
-        uri: item.nome_arquivo,
-        timestamp: new Date(item.created_at).getTime(),
-        duration: 0,
-        vocalizationId: item.id_vocalizacao,
-        vocalizationName: getVocalizationName(item.id_vocalizacao, vocalizations),
-        participanteId: item.id_participante,
-        status: "sent",
-      }));
+      const remoteRecordings: AudioRecording[] = await Promise.all(
+        data.map(async (item: any) => ({
+          id: item.id,
+          uri: item.nome_arquivo,
+          timestamp: new Date(item.created_at).getTime(),
+          duration: 0,
+          vocalizationId: item.id_vocalizacao,
+
+          vocalizationName: await getVocalizationName(item.id_vocalizacao, vocalizationsList),
+          participanteId: item.id_participante,
+          status: "sent",
+        }))
+      );
 
       let storedRecordingsJson = await AsyncStorage.getItem("recordings");
 
       const localRecordings: AudioRecording[] = storedRecordingsJson ? JSON.parse(storedRecordingsJson) : [];
 
+      // O localRecording vem depois, então se já existir no AsyncStorage com uma URI de cache file://, ele prevalece.
       const mergedRecordings = Array.from(
         new Map(
-          [...remoteRecordings, ...localRecordings].map(record => [
-            `${record.uri}-${record.timestamp}`,
-            record,
-          ])
+          [...remoteRecordings, ...localRecordings].map(record => {
+            const key = record.id ? `id-${record.id}` : `ts-${record.timestamp}`;
+            return [key, record];
+          })
         ).values()
       ).map(record => ({
         ...record,
@@ -264,6 +274,31 @@ export default function AudiosScreen() {
       setLoadingVocalizations(false);
     }
   }
+
+  const downloadAndCacheAudio = async (recording: AudioRecording): Promise<string> => {
+    try {
+      if (!recording.id) throw new Error("ID do áudio não encontrado para download");
+
+      const remoteUrl = await getAudioPlayUrl(Number(recording.id));
+      const localUri = `${FileSystem.documentDirectory}vocalizeai_cache_${recording.id}_${recording.timestamp}.wav`;
+
+      const downloadResult = await FileSystem.downloadAsync(remoteUrl, localUri);
+
+      // Atualiza o estado e o AsyncStorage com a URI recém cacheada
+      setRecordings(prev => {
+        const updated = prev.map(rec =>
+          rec.timestamp === recording.timestamp ? { ...rec, uri: downloadResult.uri } : rec
+        );
+        AsyncStorage.setItem("recordings", JSON.stringify(updated)).catch(console.error);
+        return updated;
+      });
+
+      return downloadResult.uri;
+    } catch (error) {
+      console.error("Erro ao fazer cache do áudio:", error);
+      throw error;
+    }
+  };
 
   const audioStats = useMemo(() => {
     const sent = recordings.filter((audio) => audio.status === "sent");
@@ -330,143 +365,171 @@ export default function AudiosScreen() {
     }
   }
 
- async function handlePlayAudio(uriOrId: string | number) {
-  try {
-    if (isRecording) {
-      throw new Error("O microfone está sendo usado");
-    }
-
-    // Se for um ID numérico, busca a URL remota primeiro
-    let uri = typeof uriOrId === "string" ? uriOrId : "";
-
-    if (typeof uriOrId === "number") {
-      uri = await getAudioPlayUrl(uriOrId);
-    }
-    const isRemote = uri.startsWith("http://") || uri.startsWith("https://");
-
-
-    // Se já estiver tocando algo, para a reprodução atual
-    if (soundRef.current) {
-      await soundRef.current.stopAsync();
-      await soundRef.current.unloadAsync();
-      soundRef.current = null;
-      await setAudioModeAsync({ 
-        playsInSilentMode: true,
-        allowsRecording: true,
+  const updateRecordingDuration = async (targetRecording: AudioRecording, durationMillis: number) => {
+    setRecordings((prevRecordings) => {
+      const updatedList = prevRecordings.map((rec) => {
+        // Encontra o áudio exato e atualiza a duração
+        if (rec.timestamp === targetRecording.timestamp) {
+          return { ...rec, duration: durationMillis };
+        }
+        return rec;
       });
       
-      // Se clicou no mesmo áudio que já estava tocando, apenas para
-      if (playingUri === String(uriOrId)) {
-        setPlayingUri(null);
-        return;
-      }
-    }
-
-    // Configura o modo de áudio para reprodução
-    await setAudioModeAsync({
-      playsInSilentMode: true,
-      allowsRecording: false,
-    });
-
-    let properUri = uri;
-
-    // Validações para arquivos locais
-    if (!isRemote) {
-      properUri = uri.startsWith("file://") ? uri : `file://${uri}`;
-      try {
-        const fileInfo = await FileSystem.getInfoAsync(properUri);
-
-        if (!fileInfo.exists) {
-          throw new Error("Arquivo não existe localmente");
-        }
-
-        if (fileInfo.size === 0) {
-          throw new Error("O arquivo está vazio ou corrompido");
-        }
-
-        if (fileInfo.size < 50) {
-          throw new Error("Arquivo de áudio suspeito (muito pequeno)");
-        }
-      } catch (fileError: any) {
-        Toast.show({
-          text1: "Erro ao verificar arquivo",
-          text2: fileError.message || "Erro ao verificar o arquivo de áudio",
-          type: "error",
-        });
-        throw fileError;
-      }
-    }
-
-    const soundObject = new Audio.Sound();
-    
-    try {
-      await soundObject.loadAsync(
-        { uri: properUri },
-        { progressUpdateIntervalMillis: 500 }
+      // Salva no AsyncStorage para não perder quando fechar o app
+      AsyncStorage.setItem("recordings", JSON.stringify(updatedList)).catch(
+        (err) => console.error("Erro ao salvar nova duração:", err)
       );
+      
+      return updatedList;
+    });
+  };
 
-      // Listener para atualizar o estado durante o ciclo de vida do áudio
-      soundObject.setOnPlaybackStatusUpdate(async (status) => {
-        if (!status.isLoaded) {
-          if ("error" in status) {
+  async function handlePlayAudio(recording: AudioRecording) {
+    try {
+      if (isRecording) {
+        throw new Error("O microfone está sendo usado");
+      }
+
+      const identifier = String(recording.id || recording.uri);
+
+      // Se já estiver tocando algo
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+        await setAudioModeAsync({ 
+          playsInSilentMode: true,
+          allowsRecording: true,
+        });
+        
+        // Se clicou no mesmo áudio que já estava tocando, apenas para
+        if (playingUri === identifier) {
+          setPlayingUri(null);
+          return;
+        }
+      }
+
+      // Configura o modo de áudio para reprodução
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: false,
+      });
+
+      let properUri = recording.uri;
+      const isLocal = properUri.startsWith("file://");
+
+     // Lógica de verificação, streaming e criação de cache
+      if (!isLocal && recording.id) {
+        Toast.show({
+          text1: "Carregando áudio...",
+          text2: "O arquivo será salvo offline para os próximos acessos.",
+          type: "info",
+          position: "bottom"
+        });
+        
+        // Pega a URL remota (S3) para tocar imediatamente por streaming
+        properUri = await getAudioPlayUrl(Number(recording.id));
+        
+        // Dispara o download em segundo plano
+        downloadAndCacheAudio(recording).catch((err) => 
+          console.log("Erro silencioso no cache de background:", err)
+        );
+
+      } else if (isLocal) {
+        // Verifica se o arquivo local ainda existe na memória do app
+        const fileInfo = await FileSystem.getInfoAsync(properUri);
+        
+        if (!fileInfo.exists) {
+          if (recording.id) {
+             Toast.show({
+                text1: "Recuperando áudio...",
+                text2: "Arquivo local não encontrado. Trazendo da nuvem...",
+                type: "info",
+                position: "bottom"
+             });
+             
+             properUri = await getAudioPlayUrl(Number(recording.id));
+             downloadAndCacheAudio(recording).catch((err) => 
+               console.log("Erro silencioso na recuperação do cache:", err)
+             );
+          } else {
+             throw new Error("Arquivo não existe localmente e não possui ID no servidor.");
+          }
+        } else if (fileInfo.size === 0 || fileInfo.size < 50) {
+          throw new Error("O arquivo local parece estar vazio ou corrompido");
+        }
+      }
+
+      const soundObject = new Audio.Sound();
+      
+      try {
+        const status = await soundObject.loadAsync(
+          { uri: properUri },
+          { progressUpdateIntervalMillis: 500 }
+        );
+
+        if (status.isLoaded && status.durationMillis && recording.duration === 0) {
+          updateRecordingDuration(recording, status.durationMillis);
+          recording.duration = status.durationMillis; 
+        }
+
+        soundObject.setOnPlaybackStatusUpdate(async (status) => {
+          if (!status.isLoaded) {
+            if ("error" in status) {
+              setPlayingUri(null);
+              await soundObject.unloadAsync();
+              soundRef.current = null;
+              Toast.show({
+                text1: "Erro",
+                text2: `Erro de reprodução: ${status.error}`,
+                type: "error",
+              });
+              if (isLocal) markCorruptedAudio(properUri);
+            }
+            return;
+          }
+
+          if (status.didJustFinish) {
             setPlayingUri(null);
             await soundObject.unloadAsync();
             soundRef.current = null;
-            Toast.show({
-              text1: "Erro",
-              text2: `Erro de reprodução: ${status.error}`,
-              type: "error",
+            
+            await setAudioModeAsync({ 
+              playsInSilentMode: true,
+              allowsRecording: true,
             });
-            if (!isRemote) markCorruptedAudio(uri);
           }
-          return;
-        }
+        });
 
-        if (status.didJustFinish) {
-          setPlayingUri(null);
-          await soundObject.unloadAsync();
-          soundRef.current = null;
-          
-          await setAudioModeAsync({ 
-            playsInSilentMode: true,
-            allowsRecording: true,
-          });
-        }
-      });
+        await soundObject.playAsync();
+        soundRef.current = soundObject;
+        setPlayingUri(identifier); 
 
-      // Inicia o áudio
-      await soundObject.playAsync();
-      soundRef.current = soundObject;
-      // usado para controlar o estado do botão de Play/Pause
-      setPlayingUri(String(uriOrId)); 
+      } catch (error) {
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: true,
+        });
+        
+        Toast.show({
+          text1: error instanceof Error ? error.message : "Erro",
+          text2: "Erro ao carregar áudio",
+          type: "error",
+        });
+        
+        if (isLocal) markCorruptedAudio(properUri);
+        throw error;
+      }
 
-    } catch (error) {
-      // Caso falhe o carregamento do áudio
-      await setAudioModeAsync({
-        playsInSilentMode: true,
-        allowsRecording: true,
-      });
-      
+    } catch (error: any) {
+      setPlayingUri(null);
       Toast.show({
-        text1: error instanceof Error ? error.message : "Erro",
-        text2: "Erro ao carregar áudio",
+        text1: "Erro ao reproduzir áudio",
+        text2: error instanceof Error ? error.message : "Erro desconhecido",
         type: "error",
       });
-      
-      if (!isRemote) markCorruptedAudio(uri);
-      
-      throw error;
     }
-
-  } catch (error: any) {
-    setPlayingUri(null);
-    Toast.show({
-      text1: "Erro ao reproduzir áudio",
-      text2: error instanceof Error ? error.message : "Erro desconhecido",
-      type: "error",
-    });
   }
-}
 
   async function markCorruptedAudio(uri: string) {
     try {
@@ -493,7 +556,7 @@ export default function AudiosScreen() {
 
   async function handleDeleteAudio(recording: AudioRecording) {
     try {
-      if (playingUri === recording.uri) {
+      if (playingUri === String(recording.id || recording.uri)) {
         await stopAudioPlayback();
       }
 
@@ -583,12 +646,14 @@ export default function AudiosScreen() {
     try {
       const vocalizations = await getVocalizacoes();
       setVocalizations(vocalizations);
+      return vocalizations;
     } catch (error) {
       Toast.show({
         text1: error instanceof Error ? error.message : "Erro",
         text2: "Erro ao carregar vocalizações",
         type: "error",
       });
+      return [];
     } finally {
       setLoadingVocalizations(false);
     }
@@ -770,7 +835,7 @@ export default function AudiosScreen() {
 
   const renderRecording = ({ item }: { item: AudioRecording }) => {
     const isSent = item.status === "sent";
-    const isPlaying = playingUri === item.uri || playingUri === String(item.id);
+    const isPlaying = playingUri === String(item.id || item.uri);
     const participanteName = getParticipanteName(item.participanteId ?? null);
 
     return (
@@ -819,7 +884,7 @@ export default function AudiosScreen() {
 
           <TouchableOpacity
             style={styles.playButton}
-            onPress={() => handlePlayAudio(item.id ? item.id : item.uri)}
+            onPress={() => handlePlayAudio(item)}
           >
             <MaterialIcons
               name={isPlaying ? "pause" : "play-arrow"}
@@ -833,7 +898,7 @@ export default function AudiosScreen() {
                 isPlaying && styles.playingText,
               ]}
             >
-              {formatTime(item.duration)}
+              {item.duration > 0 && formatTime(item.duration)}
             </Text>
           </TouchableOpacity>
         </View>
