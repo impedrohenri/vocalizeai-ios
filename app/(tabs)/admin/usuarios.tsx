@@ -24,9 +24,11 @@ import {
 import Toast from "react-native-toast-message";
 import { UsuarioUpdate } from "../../../types/UsuarioUpdate";
 import { api } from "@/services/api";
+import { getAllParticipantes } from "@/services/participanteService";
 
 export default function UsuariosScreen() {
   const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [participantes, setParticipantes] = useState<any[]>([]);
   const [selectedUsuario, setSelectedUsuario] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -74,9 +76,27 @@ export default function UsuariosScreen() {
     }
   }, []);
 
+  const fetchParticipantes = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getAllParticipantes();
+        setParticipantes(data);
+  
+      } catch (error: any) {
+        Toast.show({
+          type: "error",
+          text1: error instanceof Error ? error.message : "Erro",
+          text2: "Não foi possível carregar os participantes",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
   useFocusEffect(
     useCallback(() => {
       fetchUsuarios();
+      fetchParticipantes();
     }, [fetchUsuarios])
   );
 
@@ -231,7 +251,10 @@ export default function UsuariosScreen() {
     }
   }
 
-  const renderUsuario = ({ item }: { item: Usuario & { acesso_permitido: boolean, codigo_convite: string, created_at: string } }) => (
+  const renderUsuario = ({ item }: { item: Usuario & { acesso_permitido: boolean, codigo_convite: string, created_at: string } }) => {
+    const qntdParticipantes = participantes.filter((p) => p.id_usuario === item.id).length;
+    
+    return (
     <View style={styles.userContainer}>
       <TouchableOpacity
         style={styles.userInfoContainer}
@@ -277,11 +300,6 @@ export default function UsuariosScreen() {
               Cadastrado em: {new Date(item.created_at).toLocaleDateString('pt-BR')}
             </Text>
           </View>
-          <View style={styles.detailRow}>
-            <MaterialIcons name="headset" size={20} color="#666" />
-            <Text style={styles.detailText}>Toque para ver áudios</Text>
-          </View>
-
           
             {(item.acesso_permitido || item.codigo_convite) && 
               <View style={styles.detailRow}>
@@ -291,6 +309,13 @@ export default function UsuariosScreen() {
                 </Text>
               </View>
             }
+
+          <View style={styles.detailRow}>
+            <MaterialIcons name="lock" size={20} color="#666" />
+            <Text style={styles.detailText}>
+             Qntd. Participantes: {qntdParticipantes}
+            </Text>
+          </View>
 
           <View >
             <Pressable onPress={() => {permitirAcesso(item.id)}}style={styles.detailRow}>
@@ -310,7 +335,7 @@ export default function UsuariosScreen() {
         </View>
       </TouchableOpacity>
     </View>
-  );
+  );}
 
   return (
     <View style={styles.container}>
@@ -443,13 +468,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5F5F5",
     padding: 20,
+    paddingTop: 10,
   },
   // --- Novos estilos para o container de ordenação ---
   sortContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
     paddingHorizontal: 4,
   },
   sortLabel: {
