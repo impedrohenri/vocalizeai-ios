@@ -84,6 +84,7 @@ export default function AudiosScreen() {
 
   const {isRecording} = useContext(RecordingContext);
   const insets = useSafeAreaInsets();
+  const [downloadingAudioId, setDownloadingAudioId] = useState<string | null>(null);
 
 
   // Essas funções controlam a exibição dos modais para o iOS 
@@ -279,6 +280,16 @@ export default function AudiosScreen() {
     try {
       if (!recording.id) throw new Error("ID do áudio não encontrado para download");
 
+      if (!isConnected) {
+        setDownloadingAudioId(null);
+        Toast.show({
+          text1: "Sem conexão",
+          text2: "Você precisa de internet para baixar e ouvir este áudio.",
+          type: "error",
+          position: "bottom"
+        });
+      }
+
       const remoteUrl = await getAudioPlayUrl(Number(recording.id));
       const localUri = `${FileSystem.documentDirectory}vocalizeai_cache_${recording.id}_${recording.timestamp}.wav`;
 
@@ -409,6 +420,8 @@ export default function AudiosScreen() {
         }
       }
 
+
+      setDownloadingAudioId(identifier);
       // Configura o modo de áudio para reprodução
       await setAudioModeAsync({
         playsInSilentMode: true,
@@ -504,8 +517,10 @@ export default function AudiosScreen() {
         await soundObject.playAsync();
         soundRef.current = soundObject;
         setPlayingUri(identifier); 
+        setDownloadingAudioId(null);
 
       } catch (error) {
+        setDownloadingAudioId(null);
         await setAudioModeAsync({
           playsInSilentMode: true,
           allowsRecording: true,
@@ -836,6 +851,7 @@ export default function AudiosScreen() {
   const renderRecording = ({ item }: { item: AudioRecording }) => {
     const isSent = item.status === "sent";
     const isPlaying = playingUri === String(item.id || item.uri);
+    const isDownloading = downloadingAudioId === String(item.id || item.uri); // Novo verificador
     const participanteName = getParticipanteName(item.participanteId ?? null);
 
     return (
@@ -885,21 +901,34 @@ export default function AudiosScreen() {
           <TouchableOpacity
             style={styles.playButton}
             onPress={() => handlePlayAudio(item)}
+            disabled={isDownloading} // Evita toques duplos enquanto carrega
           >
-            <MaterialIcons
-              name={isPlaying ? "pause" : "play-arrow"}
-              size={24}
-              color={isSent ? "white" : "#666"}
-            />
-            <Text
-              style={[
-                styles.durationText,
-                isSent && styles.sentText,
-                isPlaying && styles.playingText,
-              ]}
-            >
-              {item.duration > 0 && formatTime(item.duration)}
-            </Text>
+            {isDownloading ? (
+              <ActivityIndicator size="small" color={isSent ? "white" : "#666"} />
+            ) : item.duration > 0 ? (
+              <>
+                <MaterialIcons
+                  name={isPlaying ? "pause" : "play-arrow"}
+                  size={24}
+                  color={isSent ? "white" : "#666"}
+                />
+                <Text
+                  style={[
+                    styles.durationText,
+                    isSent && styles.sentText,
+                    isPlaying && styles.playingText,
+                  ]}
+                >
+                  {formatTime(item.duration)}
+                </Text>
+              </>
+            ) : (
+              <MaterialIcons
+                name={isPlaying ? "replay" : "download"}
+                size={24}
+                color={isSent ? "white" : "#666"}
+              />
+            )}
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
