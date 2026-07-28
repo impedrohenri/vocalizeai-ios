@@ -24,6 +24,7 @@ import {
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { amountAudiosByParticipante } from "../../../services/audioService";
+import { getAllUsers } from "@/services/usuarioService";
 
 export default function ParticipantesScreen() {
   const [participantes, setParticipantes] = useState<any[]>([]);
@@ -44,6 +45,7 @@ export default function ParticipantesScreen() {
   const [nomeError, setNomeError] = useState("");
   const [qtdAudios, setQtdAudios] = useState<{ [key: number]: number }>({});
   const router = useRouter();
+  const [responsaveis, setResponsaveis] = useState<any[]>([]);
 
   const fetchAudioCount = useCallback(async (participanteId: number) => {
     try {
@@ -86,10 +88,27 @@ export default function ParticipantesScreen() {
     }
   }, [fetchAllAudioCounts]);
 
+  const fetchUsuarios = useCallback(async () => {
+      setIsLoading(true);
+      try {
+        const users = await getAllUsers();
+        setResponsaveis(users);
+      } catch (error: any) {
+        Toast.show({
+          type: "error",
+          text1: error instanceof Error ? error.message : "Erro",
+          text2: "Não foi possível carregar os usuários",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }, []);
+
   useFocusEffect(
     useCallback(() => {
       fetchParticipantes();
-    }, [fetchParticipantes])
+      fetchUsuarios();
+    }, [fetchParticipantes, fetchUsuarios])
   );
 
   const validateIdade = (value: string) => {
@@ -268,6 +287,14 @@ export default function ParticipantesScreen() {
                 {item.nivel_suporte === 0
                   ? "Nível de suporte não informado"
                   : `Nível de suporte ${item.nivel_suporte}`}
+              </Text>
+            </View>
+            <View style={styles.detailRow}>
+              <MaterialIcons name="person" size={20} color="#666" />
+              <Text style={styles.detailText}>
+                Responsável:{" "}
+                {responsaveis.find((r) => r.id === item.id_usuario)?.nome ||
+                  "Não informado"}
               </Text>
             </View>
             <View style={styles.detailRow}>
