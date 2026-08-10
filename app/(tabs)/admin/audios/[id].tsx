@@ -106,11 +106,13 @@ export default function AudiosUsuarioScreen() {
       const participantesList = await getParticipantesByUsuario(userId);
       setParticipantes(participantesList);
     } catch (error: any) {
-      Toast.show({
-        type: "error",
-        text1: "Erro ao carregar participantes",
-        text2: error?.message || "Tente novamente mais tarde",
-      });
+      if (error?.message !== "Nenhum participante encontrado para este usuário") {
+        Toast.show({
+          type: "error",
+          text1: "Erro ao carregar participantes",
+          text2: error?.message || "Tente novamente mais tarde",
+        });
+      }
     } finally {
       setLoadingParticipantes(false);
     }
@@ -571,7 +573,7 @@ export default function AudiosUsuarioScreen() {
           <ErrorView />
         ) : (
           <FlatList
-            data={participantes}
+            data={sortedParticipantes}
             renderItem={renderParticipanteItem}
             keyExtractor={(item) => `participante-${item.id}`}
             ListEmptyComponent={
@@ -583,7 +585,7 @@ export default function AudiosUsuarioScreen() {
               </View>
             }
             contentContainerStyle={
-              participantes.length === 0
+              sortedParticipantes.length === 0
                 ? { flex: 1, justifyContent: "center" }
                 : styles.listContainer
             }
