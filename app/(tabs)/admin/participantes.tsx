@@ -10,7 +10,7 @@ import {
 import { ParticipantePayload } from "@/types/ParticipantePayload";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -46,6 +46,7 @@ export default function ParticipantesScreen() {
   const [qtdAudios, setQtdAudios] = useState<{ [key: number]: number }>({});
   const router = useRouter();
   const [responsaveis, setResponsaveis] = useState<any[]>([]);
+  const [sortOption, setSortOption] = useState<'data' | 'alfabetica'>('data');
 
   const fetchAudioCount = useCallback(async (participanteId: number) => {
     try {
@@ -238,6 +239,24 @@ export default function ParticipantesScreen() {
     }
   };
 
+  const participantesOrdenados = useMemo(() => {
+    const lista = [...participantes];
+
+    if (sortOption === 'alfabetica') {
+      return lista.sort((a, b) =>
+        a.nome.localeCompare(b.nome, 'pt-BR')
+      );
+    }
+
+    // Mais antigos primeiro
+    return lista.sort((a, b) => {
+      const dataA = new Date(a.created_at).getTime();
+      const dataB = new Date(b.created_at).getTime();
+
+      return dataA - dataB;
+    });
+  }, [participantes, sortOption]);
+
   const renderParticipante = ({ item }: { item: any }) => (
     <TouchableOpacity onPress={() => navigateToAudios(item)}>
       <View style={styles.participanteContainer}>
@@ -315,8 +334,59 @@ export default function ParticipantesScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.sortContainer}>
+        <Text style={styles.sortLabel}>Ordenar por:</Text>
+
+        <View style={styles.sortButtonsContainer}>
+          <TouchableOpacity
+            style={[
+              styles.sortButton,
+              sortOption === 'data' && styles.sortButtonActive
+            ]}
+            onPress={() => setSortOption('data')}
+          >
+            <MaterialIcons
+              name="access-time"
+              size={16}
+              color={sortOption === 'data' ? '#2196F3' : '#666'}
+            />
+
+            <Text
+              style={[
+                styles.sortButtonText,
+                sortOption === 'data' && styles.sortButtonTextActive
+              ]}
+            >
+              Data
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.sortButton,
+              sortOption === 'alfabetica' && styles.sortButtonActive
+            ]}
+            onPress={() => setSortOption('alfabetica')}
+          >
+            <MaterialIcons
+              name="sort-by-alpha"
+              size={16}
+              color={sortOption === 'alfabetica' ? '#2196F3' : '#666'}
+            />
+
+            <Text
+              style={[
+                styles.sortButtonText,
+                sortOption === 'alfabetica' && styles.sortButtonTextActive
+              ]}
+            >
+              A-Z
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
       <FlatList
-        data={participantes}
+        data={participantesOrdenados}
         renderItem={renderParticipante}
         keyExtractor={(participante) => participante.id.toString()}
         ListEmptyComponent={
@@ -529,5 +599,51 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     marginVertical: 8,
+  },
+  sortContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#f5f5f5",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  sortLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  sortButtonsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: 4,
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    gap: 4,
+  },
+  sortButtonActive: {
+    backgroundColor: "#FFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 2,
+  },
+  sortButtonText: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
+  },
+  sortButtonTextActive: {
+    color: "#2196F3",
+    fontWeight: "bold",
   },
 });
