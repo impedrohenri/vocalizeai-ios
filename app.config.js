@@ -6,7 +6,7 @@ const IS_PREVIEW = process.env.APP_VARIANT === 'preview';
 const getUniqueIdentifier = () => {
   if (IS_DEV) return 'com.cauta.vocalizeai.dev';
   if (IS_PREVIEW) return 'com.cauta.vocalizeai.preview';
-  return 'com.cauta.vocalizeai';
+  return 'com.cauta.vocalizeai.android';
 };
 
 const getAppName = () => {
@@ -28,7 +28,6 @@ export default ({ config }) => ({
     slug: getSlug(),
     owner: "cauta",
     version: process.env.EXPO_PUBLIC_APP_VERSION,
-    orientation: "portrait",
     icon: "./assets/images/ios-light.png",
     scheme: "myapp",
     userInterfaceStyle: "automatic",
@@ -99,8 +98,8 @@ export default ({ config }) => ({
         "expo-build-properties",
         {
           android: {
-            compileSdkVersion: 35,
-            targetSdkVersion: 35,
+            compileSdkVersion: 36,
+            targetSdkVersion: 36,
             minSdkVersion: 26,
             usesCleartextTraffic: IS_DEV || IS_PREVIEW,
           },
@@ -116,7 +115,6 @@ export default ({ config }) => ({
         "expo-audio",
         {
           microphonePermission: "Permitir que o VocalizeAI acesse o microfone para gravar áudio.",
-          enableBackgroundPlayback: true,
           enableBackgroundRecording: true
         }
       ],
